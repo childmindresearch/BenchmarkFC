@@ -1,0 +1,27 @@
+[project]
+name = "arfc-experiments"
+version = "0.1.0"
+description = "ARFC project experiments"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "ipython",
+    "jupyter",
+    "matplotlib==3.10.1",
+    "neuromaps",
+    "nibabel==5.3.2",
+    "nilearn==0.11.1",
+    "nisc",
+    "numpy==1.26.4",
+    "pandas==2.2.3",
+    "pre-commit>=4.1.0",
+    "pyspi==1.1.1",
+    "scikit-learn==1.6.1",
+    "scipy==1.15.2",
+    "skarf",
+]
+
+[tool.uv.sources]
+skarf = { path = "submodules/skarf", editable = true }
+nisc = { git = "https://github.com/clane9/nisc.git", rev = "667f98814b63fecbb158b7a96b8e6f7dbebb0eb2" }
+neuromaps = { git = "https://github.com/netneurolab/neuromaps.git", tag = "0.0.5" }

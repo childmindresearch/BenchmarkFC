@@ -1,0 +1,3 @@
+[submodule "submodules/skarf"]
+	path = submodules/skarf
+	url = git@github.com:childmindresearch/skarf.git
