@@ -5,6 +5,7 @@ description = "ARFC project experiments"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "dvc>=3.59.1",
     "ipython",
     "jupyter",
     "matplotlib==3.10.1",
