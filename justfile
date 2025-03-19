@@ -11,3 +11,6 @@ download_misc_files:
 
 find_hcp_1200_rfmri_all_runs:
     bash scripts/find_hcp_1200_rfmri_all_runs.sh
+
+compute_hcp_1200_rfmri_fd:
+    uv run python scripts/compute_hcp_1200_rfmri_fd.py
