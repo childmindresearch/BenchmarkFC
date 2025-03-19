@@ -5,6 +5,13 @@ build/
 dist/
 wheels/
 *.egg-info
+_version.py
 
 # Virtual environments
 .venv
+
+# Local data and scratch
+.scratch/
+data/
+logs/
+resources/schaefer_parcellations

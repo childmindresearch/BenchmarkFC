@@ -21,3 +21,38 @@
 ## 2025-03-14
 
 - Added `skarf` as a submodule editable dependency.
+- Added [`dvc`](https://dvc.org) and initialized dvc project. [Opted out of dvc usage tracking](https://dvc.org/doc/user-guide/analytics)
+- Added a `dvc` local remote backup at `/ocean/projects/med220004p/clane2/.backup/dvcstore`.
+
+- Script to download schaefer: [`download_schaefer_parcellations.sh`](../scripts/download_schaefer_parcellations.sh).
+
+- Added dvc stage to download parcellations, fun
+
+  ```bash
+  dvc stage add -n download_schaefer \
+    -d scripts/download_schaefer_parcellations.sh \
+    --outs-persist-no-cache resources/schaefer_parcellations \
+    bash scripts/download_schaefer_parcellations.sh
+  ```
+
+- Got rid of dvc... too much machinery, doesn't work well for long running slurm tasks (https://github.com/iterative/dvc/issues/7419).
+
+- Also thought about `make`, same problem of asynchronous long-running slurm jobs.
+
+- Added [`just`](https://github.com/casey/just), which is similar to `make`, but just for running and abbreviating commands.
+
+- Looking into motion info for HCP. In [the manual](https://www.humanconnectome.org/storage/app/media/documentation/s1200/HCP_S1200_Release_Reference_Manual.pdf), page 96, it says:
+
+  ```
+  Motion parameters. Estimates of motion parameters are saved into two different files: Movement_Regressors.txt and Movement_Regressors_dt.txt. The first file (Movement_Regressors.txt) contains 12 variables. The first six variables are the motion parameters estimates from a rigid-body transformation to the SBRef image acquired at the start of each fMRI scan.
+     trans_x (mm)
+     trans_y (mm)
+     trans_z (mm)
+     rot_x (deg)
+     rot_y (deg)
+     rot_z (deg)
+  ```
+
+- Added function to compute FD.
+
+- Downloaded He 2019 KRDNN 953 subject list for HCP and Li 2019 GSR HCP behavioral column lists.
