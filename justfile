@@ -14,3 +14,6 @@ find_hcp_1200_rfmri_all_runs:
 
 compute_hcp_1200_rfmri_fd:
     uv run python scripts/compute_hcp_1200_rfmri_fd.py
+
+analyze_hcp_1200_rfmri_fd:
+    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_rfmri_fd.ipynb
