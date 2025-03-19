@@ -1,11 +1,20 @@
-# Python-generated files
+.DS_Store
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.py[cod]
+
+# Vim
+*.swp
+
+# Distribution / packaging
+*.egg-info/
+dist
+build
 _version.py
+
+# VScode IDE
+.vscode/
 
 # Virtual environments
 .venv

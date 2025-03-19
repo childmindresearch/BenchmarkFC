@@ -19,8 +19,10 @@ dependencies = [
     "nisc",
     "numpy==1.26.4",
     "pandas==2.2.3",
+    "pip>=25.0.1",
     "pre-commit>=4.1.0",
     "pyspi==1.1.1",
+    "pytest>=8.3.5",
     "rust-just==1.40.0",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
@@ -35,3 +37,7 @@ neuromaps = { git = "https://github.com/netneurolab/neuromaps.git", tag = "0.0.5
 
 [tool.setuptools_scm]
 version_file = "src/arfcexp/_version.py"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
