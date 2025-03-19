@@ -56,3 +56,14 @@
 - Added function to compute FD.
 
 - Downloaded He 2019 KRDNN 953 subject list for HCP and Li 2019 GSR HCP behavioral column lists.
+
+## 2025-03-19
+
+- Computed FD on all HCP subjects.
+- Wrote notebook to analyze FD. Also used as a small test for how to do reproducible notebooks:
+  - Loading mpl style from style sheet
+  - Execute with `jupyter execute --inplace`
+- Wrote notebook to filter hcp subjects:
+  - complete 58 behavioral data
+  - complete 3T rest data
+  - mean FD < 0.3 (nb, FD outlier threshold is 0.28, but 0.3 is a standard threshold and close enough).

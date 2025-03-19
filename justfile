@@ -17,3 +17,6 @@ compute_hcp_1200_rfmri_fd:
 
 analyze_hcp_1200_rfmri_fd:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_rfmri_fd.ipynb
+
+filter_hcp_1200_subjects:
+    uv run jupyter execute --inplace notebooks/filter_hcp_1200_subjects.ipynb
