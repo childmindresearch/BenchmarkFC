@@ -8,13 +8,21 @@ import pandas as pd
 from tqdm import tqdm
 
 from arfcexp.hcp import parse_hcp_metadata
-from arfcexp.compute_fd import compute_fd
+from arfcexp.motion import compute_fd, censor_motion_spikes
 
 logging.basicConfig(
     format="[%(levelname)s %(asctime)s]: %(message)s",
     level=logging.INFO,
     datefmt="%y-%m-%d %H:%M:%S",
 )
+
+# Censoring config following Li et al., NeuroImage 2019.
+# But note, using more lenient spike threshold of 0.4. This is still in the typical
+# range, and close to the true volumewise FD outlier threshold. Li et al used
+# fsl_motion_outliers, which computes Jenkinson FD, which is not the same as Power FD we
+# use here.
+CENSOR_FD_THRESHOLD = 0.4
+CENSOR_SEGMENT_THRESHOLD = 5
 
 
 def main():
@@ -48,8 +56,31 @@ def generate_hcp_fd_record(path: Path) -> dict | None:
 
     if meta["mod"] == "rfMRI":
         motion_regressors = np.genfromtxt(path)
-        mean_fd = compute_fd(motion_regressors).mean()
-        record = {**meta, "fd": mean_fd}
+        n_frames = len(motion_regressors)
+
+        # Compute framewise displacement.
+        fd_values = compute_fd(motion_regressors)
+        fd_values = fd_values.astype(np.float32)
+        mean_fd = np.mean(fd_values[1:])
+
+        # Censor motion spikes following Li et al., 2019.
+        sample_mask = censor_motion_spikes(
+            fd_values,
+            threshold=CENSOR_FD_THRESHOLD,
+            segment_threshold=CENSOR_SEGMENT_THRESHOLD,
+        )
+        n_censor_frames = np.sum(~sample_mask)
+        censor_frac = n_censor_frames / n_frames
+
+        record = {
+            **meta,
+            "n_frames": n_frames,
+            "mean_fd": mean_fd,
+            "n_censor_frames": n_censor_frames,
+            "censor_frac": censor_frac,
+            "fd_values": fd_values,
+            "sample_mask": sample_mask,
+        }
         return record
 
 
