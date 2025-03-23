@@ -19,14 +19,17 @@ dependencies = [
     "nisc",
     "numpy==1.26.4",
     "pandas==2.2.3",
+    "pillow==11.1.0",
     "pip>=25.0.1",
     "pre-commit>=4.1.0",
     "pyspi==1.1.1",
     "pytest>=8.3.5",
+    "pyvista[jupyter]==0.43.10",
     "rust-just==1.40.0",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
     "skarf",
+    "templateflow==24.2.2",
     "typer>=0.15.2",
 ]
 

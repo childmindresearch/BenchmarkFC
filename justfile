@@ -23,3 +23,6 @@ filter_hcp_1200_subjects:
 
 test_timeseries_preprocessing:
     uv run jupyter execute --inplace notebooks/test_timeseries_preprocessing.ipynb
+
+test_surfvis:
+    uv run jupyter execute --inplace notebooks/test_surfvis.ipynb
