@@ -5,7 +5,7 @@ set -ex
 resolutions="200 300 400 500 800 1000"
 parc_dir="resources/schaefer_parcellations"
 
-rm -r $parc_dir 2>/dev/null
+rm -r $parc_dir || true 2>/dev/null
 mkdir -p $parc_dir
 
 for res in $resolutions; do
