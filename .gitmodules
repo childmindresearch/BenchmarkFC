@@ -1,3 +1,6 @@
 [submodule "submodules/skarf"]
 	path = submodules/skarf
 	url = git@github.com:childmindresearch/skarf.git
+[submodule "submodules/yaspy"]
+	path = submodules/yaspy
+	url = git@github.com:childmindresearch/yaspy.git

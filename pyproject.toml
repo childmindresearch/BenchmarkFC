@@ -19,22 +19,21 @@ dependencies = [
     "nisc",
     "numpy==1.26.4",
     "pandas==2.2.3",
-    "pillow==11.1.0",
     "pip>=25.0.1",
     "pre-commit>=4.1.0",
     "pyspi==1.1.1",
     "pytest>=8.3.5",
-    "pyvista[jupyter]==0.43.10",
     "rust-just==1.40.0",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
     "skarf",
-    "templateflow==24.2.2",
     "typer>=0.15.2",
+    "yaspy",
 ]
 
 [tool.uv.sources]
 skarf = { path = "submodules/skarf", editable = true }
+yaspy = { path = "submodules/yaspy", editable = true }
 nisc = { git = "https://github.com/clane9/nisc.git", rev = "667f98814b63fecbb158b7a96b8e6f7dbebb0eb2" }
 neuromaps = { git = "https://github.com/netneurolab/neuromaps.git", tag = "0.0.5" }
 
