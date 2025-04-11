@@ -29,3 +29,6 @@ test_synthetic_timeseries_preprocessing:
 
 test_hcp_timeseries_preprocessing:
     uv run jupyter execute --inplace notebooks/test_hcp_timeseries_preprocessing.ipynb
+
+test_hcp_timeseries_filtering:
+    uv run jupyter execute --inplace notebooks/test_hcp_timeseries_filtering.ipynb
