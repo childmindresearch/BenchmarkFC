@@ -21,5 +21,11 @@ analyze_hcp_1200_rfmri_fd:
 filter_hcp_1200_subjects:
     uv run jupyter execute --inplace notebooks/filter_hcp_1200_subjects.ipynb
 
-test_timeseries_preprocessing:
-    uv run jupyter execute --inplace notebooks/test_timeseries_preprocessing.ipynb
+visualize_raw_hcp_timeseries:
+    uv run jupyter execute --inplace notebooks/visualize_raw_hcp_timeseries.ipynb
+
+test_synthetic_timeseries_preprocessing:
+    uv run jupyter execute --inplace notebooks/test_synthetic_timeseries_preprocessing.ipynb
+
+test_hcp_timeseries_preprocessing:
+    uv run jupyter execute --inplace notebooks/test_hcp_timeseries_preprocessing.ipynb

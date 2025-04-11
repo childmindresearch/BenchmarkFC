@@ -9,6 +9,7 @@ description = "ARFC project experiments"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "av==14.2.0",
     "datasets>=3.4.0",
     "ipython",
     "jupyter",
@@ -23,6 +24,7 @@ dependencies = [
     "pre-commit>=4.1.0",
     "pyspi==1.1.1",
     "pytest>=8.3.5",
+    "pyvista[jupyter]==0.43.10",
     "rust-just==1.40.0",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",

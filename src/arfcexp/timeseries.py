@@ -1,8 +1,9 @@
 import warnings
+from typing import Literal
 
 import nilearn.signal
 import numpy as np
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import CubicSpline, PchipInterpolator
 from scipy.sparse import csr_array
 
 EPS = np.finfo(np.float32).eps
@@ -72,49 +73,60 @@ def extract_timeseries(series: np.ndarray, parc_one_hot: np.ndarray) -> np.ndarr
 def preprocess_timeseries(
     series: np.ndarray,
     tr: float,
-    gsr: bool = True,
     sample_mask: np.ndarray | None = None,
+    interp: Literal["spline", "pchip"] | None = None,
+    gsr: bool = True,
     low_pass: float = 0.08,
     high_pass: float = 0.009,
-    pad: int | None = 4,
+    padtype: Literal["even", "odd"] = "even",
 ) -> np.ndarray:
     """
     Preprocessing following Li et al., 2019; Kong et al., 2023.
 
-    - Interpolate censored frames (cubic spline)
     - GSR
     - band-pass filter 0.009 < f < 0.08
+
+    Note, not interpolating over censored time points because it sometimes fails and
+    introduces artifacts. Better to have real data, even if noisy, than fake data with
+    artifacts.
+
+    Note, even padtype used, rather than default odd padtype. Odd padding introduces bad
+    boundary effects due to (I guess) shiting the time series mean.
     """
-    if sample_mask is not None:
-        series = interpolate_missing_frames(series, sample_mask)
+    series, bad_mask = fill_na(series)
 
-    series, _ = fill_na(series)
+    valid_mask = np.std(series, axis=0) > np.finfo(np.float16).eps
+    valid_series = series[:, valid_mask]
 
-    confounds = np.nanmean(series, axis=1) if gsr else None
+    if interp and sample_mask is not None:
+        valid_series = interpolate_missing_frames(
+            valid_series, sample_mask, interp=interp
+        )
 
-    if pad:
-        pad_mask = np.ones(len(series), dtype=bool)
-        series = np.pad(series, [(pad, pad), (0, 0)])
-        pad_mask = np.pad(pad_mask, pad)
-        if confounds is not None:
-            confounds = np.pad(confounds, pad)
+    if gsr:
+        # regress global signal and its temporal derivative, following Li 2019.
+        global_signal = np.mean(valid_series, axis=1)
+        global_signal_derivative = np.diff(global_signal, prepend=global_signal[0])
+        confounds = np.stack([global_signal, global_signal_derivative], axis=1)
     else:
-        pad_mask = None
+        confounds = None
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=FutureWarning)
 
-        clean_series = nilearn.signal.clean(
-            series,
+        valid_clean_series = nilearn.signal.clean(
+            valid_series,
             standardize="zscore_sample",
             confounds=confounds,
             low_pass=low_pass,
             high_pass=high_pass,
             t_r=tr,
-            # Treat padded frames as missing, extrapolate and then trim.
-            sample_mask=pad_mask,
-            extrapolate=True,
+            butterworth__padtype=padtype,
         )
+
+    clean_series = np.zeros(series.shape, dtype=np.float32)
+    clean_series[:, valid_mask] = valid_clean_series
+    clean_series = np.where(bad_mask, np.nan, clean_series)
     return clean_series
 
 
@@ -128,20 +140,26 @@ def fill_na(series: np.ndarray):
 
 
 def interpolate_missing_frames(
-    series: np.ndarray, sample_mask: np.ndarray
+    series: np.ndarray,
+    sample_mask: np.ndarray,
+    interp: Literal["spline", "pchip"] = "pchip",
 ) -> np.ndarray:
-    """Interpolate missing frames in time series using cubic spline.
+    """Interpolate missing frames in time series using cubic spline or pchip.
 
     Args:
         series: time series, (n_samples, n_features)
         sample_mask: mask of included samples (True = include), shape (n_samples).
+        interp: interpolation method
 
     Returns:
         interp_series: interpolated series, shape (n_samples, n_features)
     """
     x = np.arange(len(series))
     sample_mask = sample_mask > 0
-    interp = CubicSpline(x[sample_mask], series[sample_mask], axis=0)
+    if interp == "spline":
+        interpolator = CubicSpline(x[sample_mask], series[sample_mask], axis=0)
+    else:
+        interpolator = PchipInterpolator(x[sample_mask], series[sample_mask], axis=0)
     interp_series = series.copy()
-    interp_series[~sample_mask] = interp(x[~sample_mask])
+    interp_series[~sample_mask] = interpolator(x[~sample_mask])
     return interp_series
