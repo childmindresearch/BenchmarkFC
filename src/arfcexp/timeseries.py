@@ -24,8 +24,14 @@ def parc_one_hot_encode(parc: np.ndarray, sparse: bool = False) -> np.ndarray:
 
     # assuming rois = 0, ..., n with 0 = background
     parc_ids = np.unique(parc)
-    num_rois = len(parc_ids) - 1
-    assert np.all(parc_ids == np.arange(num_rois + 1))
+    assert parc_ids[0] == 0
+    num_rois = parc_ids[-1]
+    if not len(parc_ids) == num_rois + 1:
+        warnings.warn(
+            f"Parcellation max index is {num_rois}, "
+            f"but only {len(parc_ids) - 1} unique nonzero IDs found.",
+            RuntimeWarning,
+        )
 
     # one hot parcellation matrix, shape (num_rois, dim)
     if sparse:
@@ -62,8 +68,9 @@ def extract_timeseries(series: np.ndarray, parc_one_hot: np.ndarray) -> np.ndarr
     parc_one_hot = parc_one_hot.T
 
     # normalize weights to sum to 1
-    # nb this will produce NaNs if a roi has no valid data
-    parc_one_hot = parc_one_hot / parc_one_hot.sum(axis=0)
+    # Nb, empty parcels will be all zero
+    parc_counts = np.asarray(parc_one_hot.sum(axis=0))
+    parc_one_hot = parc_one_hot / np.maximum(parc_counts, 1)
 
     # per roi averaging
     parc_series = series @ parc_one_hot

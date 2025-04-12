@@ -29,3 +29,14 @@ test_hcp_timeseries_preprocessing:
 
 test_hcp_timeseries_filtering:
     uv run jupyter execute --inplace notebooks/test_hcp_timeseries_filtering.ipynb
+
+extract_hcp_schaefer_timeseries:
+    mkdir -p logs/extract_hcp_schaefer_timeseries 2>/dev/null
+    sbatch \
+    --job-name extract_hcp \
+    --nodes 1 \
+    --partition RM \
+    --time 04:00:00 \
+    --export=ALL \
+    --output logs/extract_hcp_schaefer_timeseries/slurm-%j.out \
+    scripts/extract_hcp_schaefer_timeseries.py
