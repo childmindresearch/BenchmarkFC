@@ -1,0 +1,1754 @@
+anm:
+  fcn: AdditiveNoiseModel
+  module_name: .statistics.causal
+  params: {}
+bary-sq_dtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: dtw
+    squared: true
+    statistic: max
+bary-sq_dtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: dtw
+    squared: true
+    statistic: mean
+bary-sq_euclidean_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: euclidean
+    squared: true
+    statistic: max
+bary-sq_euclidean_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: euclidean
+    squared: true
+    statistic: mean
+bary-sq_sgddtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: sgddtw
+    squared: true
+    statistic: max
+bary-sq_sgddtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: sgddtw
+    squared: true
+    statistic: mean
+bary-sq_softdtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: softdtw
+    squared: true
+    statistic: max
+bary-sq_softdtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: softdtw
+    squared: true
+    statistic: mean
+bary_dtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: dtw
+    statistic: max
+bary_dtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: dtw
+    statistic: mean
+bary_euclidean_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: euclidean
+    statistic: max
+bary_euclidean_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: euclidean
+    statistic: mean
+bary_sgddtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: sgddtw
+    statistic: max
+bary_sgddtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: sgddtw
+    statistic: mean
+bary_softdtw_max:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: softdtw
+    statistic: max
+bary_softdtw_mean:
+  fcn: Barycenter
+  module_name: .statistics.distance
+  params:
+    mode: softdtw
+    statistic: mean
+cce_gaussian:
+  fcn: CausalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+cce_kernel_W-0.5:
+  fcn: CausalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+cce_kozachenko:
+  fcn: CausalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+ccm_E-10_diff:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 10
+    statistic: diff
+ccm_E-10_max:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 10
+    statistic: max
+ccm_E-10_mean:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 10
+    statistic: mean
+ccm_E-1_diff:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 1
+    statistic: diff
+ccm_E-1_max:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 1
+    statistic: max
+ccm_E-1_mean:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    embedding_dimension: 1
+    statistic: mean
+ccm_E-None_diff:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    statistic: diff
+ccm_E-None_max:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    statistic: max
+ccm_E-None_mean:
+  fcn: ConvergentCrossMapping
+  module_name: .statistics.causal
+  params:
+    statistic: mean
+cds:
+  fcn: ConditionalDistributionSimilarity
+  module_name: .statistics.causal
+  params: {}
+ce_gaussian:
+  fcn: ConditionalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+ce_kernel_W-0.5:
+  fcn: ConditionalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+ce_kozachenko:
+  fcn: ConditionalEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+cohmag_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+cohmag_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+cohmag_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+cohmag_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+cohmag_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+cohmag_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: CoherenceMagnitude
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+coint_aeg_tstat_trend-c_autolag-aic_maxlag-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    autolag: aic
+    maxlag: 10
+    method: aeg
+    statistic: tstat
+    trend: c
+coint_aeg_tstat_trend-ct_autolag-aic_maxlag-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    autolag: aic
+    maxlag: 10
+    method: aeg
+    statistic: tstat
+    trend: ct
+coint_aeg_tstat_trend-ct_autolag-bic_maxlag-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    autolag: bic
+    maxlag: 10
+    method: aeg
+    statistic: tstat
+    trend: ct
+coint_johansen_max_eig_stat_order-0_ardiff-1:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 0
+    k_ar_diff: 1
+    method: johansen
+    statistic: max_eig_stat
+coint_johansen_max_eig_stat_order-0_ardiff-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 0
+    k_ar_diff: 10
+    method: johansen
+    statistic: max_eig_stat
+coint_johansen_max_eig_stat_order-1_ardiff-1:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 1
+    k_ar_diff: 1
+    method: johansen
+    statistic: max_eig_stat
+coint_johansen_max_eig_stat_order-1_ardiff-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 1
+    k_ar_diff: 10
+    method: johansen
+    statistic: max_eig_stat
+coint_johansen_trace_stat_order-0_ardiff-1:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 0
+    k_ar_diff: 1
+    method: johansen
+    statistic: trace_stat
+coint_johansen_trace_stat_order-0_ardiff-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 0
+    k_ar_diff: 10
+    method: johansen
+    statistic: trace_stat
+coint_johansen_trace_stat_order-1_ardiff-1:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 1
+    k_ar_diff: 1
+    method: johansen
+    statistic: trace_stat
+coint_johansen_trace_stat_order-1_ardiff-10:
+  fcn: Cointegration
+  module_name: .statistics.misc
+  params:
+    det_order: 1
+    k_ar_diff: 10
+    method: johansen
+    statistic: trace_stat
+cov-sq_EllipticEnvelope:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: EllipticEnvelope
+    squared: true
+cov-sq_EmpiricalCovariance:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: EmpiricalCovariance
+    squared: true
+cov-sq_GraphicalLasso:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLasso
+    squared: true
+cov-sq_GraphicalLassoCV:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLassoCV
+    squared: true
+cov-sq_LedoitWolf:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: LedoitWolf
+    squared: true
+cov-sq_MinCovDet:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: MinCovDet
+    squared: true
+cov-sq_OAS:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: OAS
+    squared: true
+cov-sq_ShrunkCovariance:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: ShrunkCovariance
+    squared: true
+cov_EllipticEnvelope:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: EllipticEnvelope
+cov_EmpiricalCovariance:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: EmpiricalCovariance
+cov_GraphicalLasso:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLasso
+cov_GraphicalLassoCV:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLassoCV
+cov_LedoitWolf:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: LedoitWolf
+cov_MinCovDet:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: MinCovDet
+cov_OAS:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: OAS
+cov_ShrunkCovariance:
+  fcn: Covariance
+  module_name: .statistics.basic
+  params:
+    estimator: ShrunkCovariance
+dcoh_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+dcoh_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+dcoh_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+dcoh_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+dcoh_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+dcoh_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+dcorr:
+  fcn: DistanceCorrelation
+  module_name: .statistics.distance
+  params:
+    biased: false
+dcorr_biased:
+  fcn: DistanceCorrelation
+  module_name: .statistics.distance
+  params:
+    biased: true
+dcorrx_maxlag-1:
+  fcn: CrossDistanceCorrelation
+  module_name: .statistics.distance
+  params:
+    max_lag: 1
+dcorrx_maxlag-10:
+  fcn: CrossDistanceCorrelation
+  module_name: .statistics.distance
+  params:
+    max_lag: 10
+ddtf_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+ddtf_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+ddtf_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+ddtf_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+ddtf_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+ddtf_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectDirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+di_gaussian:
+  fcn: DirectedInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+di_kernel_W-0.5:
+  fcn: DirectedInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+di_kozachenko:
+  fcn: DirectedInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+dspli_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+dspli_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+dspli_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+dspli_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+dspli_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+dspli_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: DebiasedSquaredPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+dswpli_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+dswpli_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+dswpli_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+dswpli_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+dswpli_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+dswpli_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: DebiasedSquaredWeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+dtf_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+dtf_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+dtf_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+dtf_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+dtf_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+dtf_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: DirectedTransferFunction
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+dtw:
+  fcn: DynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: null
+dtw_constraint-itakura:
+  fcn: DynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: itakura
+dtw_constraint-sakoe-chiba:
+  fcn: DynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: sakoe_chiba
+gc_gaussian_k-1_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+    k_history: 1
+    l_history: 1
+gc_gaussian_k-max-10_tau-max-2:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    auto_embed_method: MAX_CORR_AIS
+    estimator: gaussian
+    k_search_max: 10
+    tau_search_max: 2
+gd_multitaper_delay_fs-1_fmin-0-25_fmax-0-5:
+  fcn: GroupDelay
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: delay
+gd_multitaper_delay_fs-1_fmin-0_fmax-0-25:
+  fcn: GroupDelay
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: delay
+gd_multitaper_delay_fs-1_fmin-0_fmax-0-5:
+  fcn: GroupDelay
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0
+    statistic: delay
+gpdcoh_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+gpdcoh_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+gpdcoh_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+gpdcoh_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+gpdcoh_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+gpdcoh_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: GeneralizedPartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+gpfit_DotProduct:
+  fcn: GPModel
+  module_name: .statistics.misc
+  params:
+    kernel: DotProduct
+gpfit_RBF:
+  fcn: GPModel
+  module_name: .statistics.misc
+  params:
+    kernel: RBF
+gwtau:
+  fcn: GromovWasserstainTau
+  module_name: .statistics.distance
+  params: {}
+hhg:
+  fcn: HellerHellerGorfine
+  module_name: .statistics.distance
+  params: {}
+hsic:
+  fcn: HilbertSchmidtIndependenceCriterion
+  module_name: .statistics.distance
+  params:
+    biased: false
+hsic_biased:
+  fcn: HilbertSchmidtIndependenceCriterion
+  module_name: .statistics.distance
+  params:
+    biased: true
+icoh_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+icoh_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+icoh_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+icoh_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+icoh_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+icoh_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: ImaginaryCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+igci:
+  fcn: InformationGeometricConditionalIndependence
+  module_name: .statistics.causal
+  params: {}
+je_gaussian:
+  fcn: JointEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+je_kernel_W-0.5:
+  fcn: JointEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+je_kozachenko:
+  fcn: JointEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+kendalltau:
+  fcn: KendallTau
+  module_name: .statistics.basic
+  params:
+    squared: false
+kendalltau-sq:
+  fcn: KendallTau
+  module_name: .statistics.basic
+  params:
+    squared: true
+lcss:
+  fcn: LongestCommonSubsequence
+  module_name: .statistics.distance
+  params:
+    global_constraint: null
+lcss_constraint-itakura:
+  fcn: LongestCommonSubsequence
+  module_name: .statistics.distance
+  params:
+    global_constraint: itakura
+lcss_constraint-sakoe-chiba:
+  fcn: LongestCommonSubsequence
+  module_name: .statistics.distance
+  params:
+    global_constraint: sakoe_chiba
+lmfit_BayesianRidge:
+  fcn: LinearModel
+  module_name: .statistics.misc
+  params:
+    model: BayesianRidge
+lmfit_ElasticNet:
+  fcn: LinearModel
+  module_name: .statistics.misc
+  params:
+    model: ElasticNet
+lmfit_Lasso:
+  fcn: LinearModel
+  module_name: .statistics.misc
+  params:
+    model: Lasso
+lmfit_Ridge:
+  fcn: LinearModel
+  module_name: .statistics.misc
+  params:
+    model: Ridge
+lmfit_SGDRegressor:
+  fcn: LinearModel
+  module_name: .statistics.misc
+  params:
+    model: SGDRegressor
+mgc:
+  fcn: MultiscaleGraphCorrelation
+  module_name: .statistics.distance
+  params: {}
+mgcx_maxlag-1:
+  fcn: CrossMultiscaleGraphCorrelation
+  module_name: .statistics.distance
+  params:
+    max_lag: 1
+mgcx_maxlag-10:
+  fcn: CrossMultiscaleGraphCorrelation
+  module_name: .statistics.distance
+  params:
+    max_lag: 10
+mi_gaussian:
+  fcn: MutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+mi_kernel_W-0.25:
+  fcn: MutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+    kernel_width: 0.25
+mi_kraskov_NN-4:
+  fcn: MutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kraskov
+    prop_k: 4
+mi_kraskov_NN-4_DCE:
+  fcn: MutualInfo
+  module_name: .statistics.infotheory
+  params:
+    dyn_corr_excl: AUTO
+    estimator: kraskov
+    prop_k: 4
+pdcoh_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+pdcoh_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+pdcoh_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+pdcoh_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+pdcoh_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+pdcoh_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: PartialDirectedCoherence
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+pdist_braycurtis:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: braycurtis
+pdist_canberra:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: canberra
+pdist_chebyshev:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: chebyshev
+pdist_cityblock:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: cityblock
+pdist_cosine:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: cosine
+pdist_euclidean:
+  fcn: PairwiseDistance
+  module_name: .statistics.distance
+  params:
+    metric: euclidean
+pec:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: false
+    log: false
+    orth: false
+pec_log:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: false
+    log: true
+    orth: false
+pec_orth:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: false
+    log: false
+    orth: true
+pec_orth_abs:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: true
+    log: false
+    orth: true
+pec_orth_log:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: false
+    log: true
+    orth: true
+pec_orth_log_abs:
+  fcn: PowerEnvelopeCorrelation
+  module_name: .statistics.misc
+  params:
+    absolute: true
+    log: true
+    orth: true
+phase_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+phase_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+phase_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+phase_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+phase_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+phase_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: CoherencePhase
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+phi_Geo_t-1_norm-0:
+  fcn: IntegratedInformation
+  module_name: .statistics.infotheory
+  params:
+    phitype: Geo
+phi_Geo_t-1_norm-1:
+  fcn: IntegratedInformation
+  module_name: .statistics.infotheory
+  params:
+    normalization: 1
+    phitype: Geo
+phi_star_t-1_norm-0:
+  fcn: IntegratedInformation
+  module_name: .statistics.infotheory
+  params:
+    phitype: star
+phi_star_t-1_norm-1:
+  fcn: IntegratedInformation
+  module_name: .statistics.infotheory
+  params:
+    normalization: 1
+    phitype: star
+pli_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+pli_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+pli_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+pli_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+pli_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+pli_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: PhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+plv_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+plv_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+plv_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+plv_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+plv_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+plv_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: PhaseLockingValue
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+ppc_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+ppc_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+ppc_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+ppc_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+ppc_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+ppc_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: PairwisePhaseConsistency
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+prec-sq_EllipticEnvelope:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: EllipticEnvelope
+    squared: true
+prec-sq_EmpiricalCovariance:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: EmpiricalCovariance
+    squared: true
+prec-sq_GraphicalLasso:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLasso
+    squared: true
+prec-sq_GraphicalLassoCV:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLassoCV
+    squared: true
+prec-sq_LedoitWolf:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: LedoitWolf
+    squared: true
+prec-sq_MinCovDet:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: MinCovDet
+    squared: true
+prec-sq_OAS:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: OAS
+    squared: true
+prec-sq_ShrunkCovariance:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: ShrunkCovariance
+    squared: true
+prec_EllipticEnvelope:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: EllipticEnvelope
+prec_EmpiricalCovariance:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: EmpiricalCovariance
+prec_GraphicalLasso:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLasso
+prec_GraphicalLassoCV:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: GraphicalLassoCV
+prec_LedoitWolf:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: LedoitWolf
+prec_MinCovDet:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: MinCovDet
+prec_OAS:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: OAS
+prec_ShrunkCovariance:
+  fcn: Precision
+  module_name: .statistics.basic
+  params:
+    estimator: ShrunkCovariance
+psi_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+psi_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+psi_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0
+psi_wavelet_max_fs-1_fmin-0-25_fmax-0-5_max:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+psi_wavelet_max_fs-1_fmin-0_fmax-0-25_max:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+psi_wavelet_max_fs-1_fmin-0_fmax-0-5_max:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fmax: 0.5
+    fmin: 0
+    statistic: max
+psi_wavelet_mean_fs-1_fmin-0-25_fmax-0-5_mean:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fmax: 0.5
+    fmin: 0.25
+psi_wavelet_mean_fs-1_fmin-0_fmax-0-25_mean:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fmax: 0.25
+    fmin: 0
+psi_wavelet_mean_fs-1_fmin-0_fmax-0-5_mean:
+  fcn: PhaseSlopeIndex
+  module_name: .statistics.wavelet
+  params:
+    fs: 1
+reci:
+  fcn: RegressionErrorCausalInference
+  module_name: .statistics.causal
+  params: {}
+sgc_nonparametric_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: nonparametric
+    statistic: max
+sgc_nonparametric_max_fs-1_fmin-0_fmax-0-25:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: nonparametric
+    statistic: max
+sgc_nonparametric_max_fs-1_fmin-0_fmax-0-5:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0
+    method: nonparametric
+    statistic: max
+sgc_nonparametric_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: nonparametric
+    statistic: mean
+sgc_nonparametric_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: nonparametric
+    statistic: mean
+sgc_nonparametric_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0
+    method: nonparametric
+    statistic: mean
+sgc_parametric_max_fs-1_fmin-0-25_fmax-0-5_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    order: 1
+    statistic: max
+sgc_parametric_max_fs-1_fmin-0-25_fmax-0-5_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    order: 20
+    statistic: max
+sgc_parametric_max_fs-1_fmin-0-25_fmax-0-5_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    statistic: max
+sgc_parametric_max_fs-1_fmin-0_fmax-0-25_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    order: 1
+    statistic: max
+sgc_parametric_max_fs-1_fmin-0_fmax-0-25_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    order: 20
+    statistic: max
+sgc_parametric_max_fs-1_fmin-0_fmax-0-25_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    statistic: max
+sgc_parametric_max_fs-1_fmin-1e-05_fmax-0-5_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    method: parametric
+    order: 1
+    statistic: max
+sgc_parametric_max_fs-1_fmin-1e-05_fmax-0-5_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    method: parametric
+    order: 20
+    statistic: max
+sgc_parametric_max_fs-1_fmin-1e-05_fmax-0-5_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    method: parametric
+    statistic: max
+sgc_parametric_mean_fs-1_fmin-0-25_fmax-0-5_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    order: 1
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0-25_fmax-0-5_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    order: 20
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0-25_fmax-0-5_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    method: parametric
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0_fmax-0-25_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    order: 1
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0_fmax-0-25_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    order: 20
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0_fmax-0-25_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    method: parametric
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-0_fmax-0-5_order-None:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0
+    method: parametric
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-1e-05_fmax-0-5_order-1:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    method: parametric
+    order: 1
+    statistic: mean
+sgc_parametric_mean_fs-1_fmin-1e-05_fmax-0-5_order-20:
+  fcn: SpectralGrangerCausality
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    method: parametric
+    order: 20
+    statistic: mean
+si_gaussian_k-1:
+  fcn: StochasticInteraction
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+si_kernel_W-0.5_k-1:
+  fcn: StochasticInteraction
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+si_kozachenko_k-1:
+  fcn: StochasticInteraction
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+softdtw:
+  fcn: SoftDynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: null
+softdtw_constraint-itakura:
+  fcn: SoftDynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: itakura
+softdtw_constraint-sakoe-chiba:
+  fcn: SoftDynamicTimeWarping
+  module_name: .statistics.distance
+  params:
+    global_constraint: sakoe_chiba
+spearmanr:
+  fcn: SpearmanR
+  module_name: .statistics.basic
+  params:
+    squared: false
+spearmanr-sq:
+  fcn: SpearmanR
+  module_name: .statistics.basic
+  params:
+    squared: true
+te_kernel_W-0.25_k-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+    k_history: 1
+    kernel_width: 0.25
+    l_history: 1
+te_kraskov_NN-4_DCE_k-1_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    dyn_corr_excl: AUTO
+    estimator: kraskov
+    k_history: 1
+    l_history: 1
+    prop_k: 4
+te_kraskov_NN-4_DCE_k-2_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    dyn_corr_excl: AUTO
+    estimator: kraskov
+    k_history: 2
+    l_history: 1
+    prop_k: 4
+te_kraskov_NN-4_DCE_k-max-10_tau-max-4:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    auto_embed_method: MAX_CORR_AIS
+    dyn_corr_excl: AUTO
+    estimator: kraskov
+    k_search_max: 10
+    prop_k: 4
+    tau_search_max: 4
+te_kraskov_NN-4_k-1_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kraskov
+    k_history: 1
+    l_history: 1
+    prop_k: 4
+te_kraskov_NN-4_k-max-10_tau-max-4:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    auto_embed_method: MAX_CORR_AIS
+    estimator: kraskov
+    k_search_max: 10
+    prop_k: 4
+    tau_search_max: 4
+te_symbolic_k-10_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: symbolic
+    k_history: 10
+    l_history: 1
+te_symbolic_k-1_kt-1_l-1_lt-1:
+  fcn: TransferEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: symbolic
+    k_history: 1
+    l_history: 1
+tlmi_gaussian:
+  fcn: TimeLaggedMutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+tlmi_kernel_W-0.25:
+  fcn: TimeLaggedMutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+    kernel_width: 0.25
+tlmi_kraskov_NN-4:
+  fcn: TimeLaggedMutualInfo
+  module_name: .statistics.infotheory
+  params:
+    estimator: kraskov
+    prop_k: 4
+tlmi_kraskov_NN-4_DCE:
+  fcn: TimeLaggedMutualInfo
+  module_name: .statistics.infotheory
+  params:
+    dyn_corr_excl: AUTO
+    estimator: kraskov
+    prop_k: 4
+wpli_multitaper_max_fs-1_fmin-0-25_fmax-0-5:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+    statistic: max
+wpli_multitaper_max_fs-1_fmin-0_fmax-0-25:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+    statistic: max
+wpli_multitaper_max_fs-1_fmin-0_fmax-0-5:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+    statistic: max
+wpli_multitaper_mean_fs-1_fmin-0-25_fmax-0-5:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.5
+    fmin: 0.25
+wpli_multitaper_mean_fs-1_fmin-0_fmax-0-25:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fmax: 0.25
+    fmin: 0
+wpli_multitaper_mean_fs-1_fmin-0_fmax-0-5:
+  fcn: WeightedPhaseLagIndex
+  module_name: .statistics.spectral
+  params:
+    fs: 1
+xcorr-sq_max_sig-True:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    squared: true
+    statistic: max
+xcorr-sq_mean_sig-False:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    sigonly: false
+    squared: true
+    statistic: mean
+xcorr-sq_mean_sig-True:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    squared: true
+    statistic: mean
+xcorr_max_sig-True:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    statistic: max
+xcorr_mean_sig-False:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    sigonly: false
+    statistic: mean
+xcorr_mean_sig-True:
+  fcn: CrossCorrelation
+  module_name: .statistics.basic
+  params:
+    statistic: mean
+xme_gaussian_k1:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+    history_length: 1
+xme_gaussian_k10:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: gaussian
+    history_length: 10
+xme_kernel_W-0.5_k1:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+    history_length: 1
+xme_kernel_W-0.5_k10:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kernel
+    history_length: 10
+xme_kozachenko_k1:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+    history_length: 1
+xme_kozachenko_k10:
+  fcn: CrossmapEntropy
+  module_name: .statistics.infotheory
+  params:
+    estimator: kozachenko
+    history_length: 10
