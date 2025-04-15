@@ -134,3 +134,43 @@
 - I updated the timeseries preprocessing util to reflect these changes and added notebooks to demo the results.
 
 - Added script to extract filtered parcellated time series. Using huggingface datasets to generate and save data.
+
+
+## 2025-04-14
+
+- Visualized preprocessed parcellated time series. Look good. Noticed that there are clear periods of large activity. Feels vaguely related to something I've seen in Rick Betzel's papers. I wonder how much of functional connectivity is driven by these spikes.
+
+- Testing PySPI SPIs (for the umpteenth time..).
+
+## 2025-04-15
+
+- Ran test of PySPI SPIs over night, 2 hour time limit, 4 GB memory. 6 did OOM, 53 timed out, and 16 otherwise failed.
+
+- Debugging failed SPIs:
+
+  ```
+  cov_EllipticEnvelope
+  cov_GraphicalLasso
+  cov_GraphicalLassoCV
+  cov_MinCovDet
+  cov-sq_EllipticEnvelope
+  cov-sq_GraphicalLasso
+  cov-sq_GraphicalLassoCV
+  cov-sq_MinCovDet
+  prec_EllipticEnvelope
+  prec_GraphicalLasso
+  prec_GraphicalLassoCV
+  prec_MinCovDet
+  prec-sq_EllipticEnvelope
+  prec-sq_GraphicalLasso
+  prec-sq_GraphicalLassoCV
+  prec-sq_MinCovDet
+  ```
+
+- These all crashed, no raised exception.
+
+- I don't understand why no raised exception, but in separate testing, they often fail when `n_samples < n_features` due to [this regression bug](https://github.com/scikit-learn/scikit-learn/issues/30625).
+
+- I can't easily downgrade sklearn, since skarf uses features from >= 1.6. E.g. in v1.5.2 there is [this metadata routing issue](https://github.com/scikit-learn/scikit-learn/pull/29634), which breaks tests in `LinearVAR`.
+
+- Decided that downgrading sklearn is too much hassle for now, and will just accept that these methods fail for `n_samples < n_features`. More concerning to me is why I could not catch the exception.
