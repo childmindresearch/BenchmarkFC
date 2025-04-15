@@ -1,10 +1,10 @@
 
 download_schaefer:
-	bash scripts/download_schaefer_parcellations.sh
+    bash scripts/download_schaefer_parcellations.sh
 
 download_hcp_1200:
-	mkdir -p logs/download_hcp_1200 2>/dev/null
-	sbatch -o logs/download_hcp_1200/slurm-%j.out scripts/download_hcp_1200.sh
+    mkdir -p logs/download_hcp_1200 2>/dev/null
+    sbatch -o logs/download_hcp_1200/slurm-%j.out scripts/download_hcp_1200.sh
 
 download_misc_files:
     bash scripts/download_misc_files.sh
@@ -40,3 +40,6 @@ extract_hcp_schaefer_timeseries:
     --export=ALL \
     --output logs/extract_hcp_schaefer_timeseries/slurm-%j.out \
     scripts/extract_hcp_schaefer_timeseries.py
+
+visualize_parcellated_hcp_timeseries:
+    uv run jupyter execute --inplace notebooks/visualize_parcellated_hcp_timeseries.ipynb
