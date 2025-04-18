@@ -8,7 +8,9 @@
 set -ex
 
 # export all environment variables
-export $(grep -v '^#' .env | xargs)
+set -a
+source .env
+set +a
 
 # check that HCP_1200_DIR is set
 [[ -n "$HCP_1200_DIR" ]]
