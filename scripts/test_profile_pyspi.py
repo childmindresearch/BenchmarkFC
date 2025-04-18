@@ -11,9 +11,9 @@ import fire
 import numpy as np
 import pyarrow as pa
 from pyarrow import feather
-from pyspi.utils import check_optional_deps
 from sklearn.preprocessing import scale
 
+from skarf import set_cache_dir
 from skarf.covariance import SPICovariance, create_spi
 
 logging.basicConfig(
@@ -28,25 +28,29 @@ os.environ["OMP_NUM_THREADS"] = str(N_CPUS)
 
 
 def main(
-    spi: str,
+    spi_id: int,
     n_samples: list[int],
     n_features: list[int],
     parc_size: int = 200,
 ):
-    logging.info(
-        "Testing and profiling PySPI SPIs:\n"
-        f"\t{spi=}\n"
-        f"\t{n_samples=}\n"
-        f"\t{n_features=}\n"
-        f"\t{parc_size=}"
-    )
-
     project_root = Path(os.environ["PROJECT_ROOT"])
     outdir = project_root / "results/test_profile_pyspi"
     outdir.mkdir(exist_ok=True)
 
-    # Nb, this implicitly starts the JVM.
-    logging.info("PySPI optional depedencies: %s", check_optional_deps())
+    # Set cache dir to local spi lists, for reproducibility
+    spi_list_dir = project_root / "resources/spi_lists"
+    set_cache_dir(spi_list_dir)
+
+    spi_list = (spi_list_dir / "spi_list_all_284.txt").read_text().strip().split()
+    spi = spi_list[spi_id]
+
+    logging.info(
+        "Testing and profiling PySPI SPIs:\n"
+        f"\t{spi_id=:03d} {spi=}\n"
+        f"\t{n_samples=}\n"
+        f"\t{n_features=}\n"
+        f"\t{parc_size=}"
+    )
 
     logging.info("Loading SPI: %s", spi)
     spi_fun = create_spi(spi)
@@ -66,6 +70,7 @@ def main(
 
     schema = pa.schema(
         {
+            "spi_id": pa.int32(),
             "spi": pa.string(),
             "n_samples": pa.int32(),
             "n_features": pa.int32(),
@@ -106,6 +111,7 @@ def main(
             mat = None
 
         result = {
+            "spi_id": spi_id,
             "spi": spi,
             "n_samples": n,
             "n_features": d,
@@ -124,7 +130,7 @@ def main(
         tab = pa.Table.from_pylist(records, schema=schema)
         feather.write_feather(
             tab,
-            outdir / f"spi-{spi}__parc-{parc_size}.arrow",
+            outdir / f"{spi_id:03d}__spi-{spi}__parc-{parc_size}.arrow",
             compression="uncompressed",
         )
 
