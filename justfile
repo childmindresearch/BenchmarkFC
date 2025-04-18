@@ -43,3 +43,10 @@ extract_hcp_schaefer_timeseries:
 
 visualize_parcellated_hcp_timeseries:
     uv run jupyter execute --inplace notebooks/visualize_parcellated_hcp_timeseries.ipynb
+
+export_spi_configs:
+    uv run python scripts/export_spi_configs.py
+
+test_profile_pyspi:
+    mkdir -p logs/test_profile_pyspi 2>/dev/null
+    sbatch -o logs/test_profile_pyspi/slurm-%A_%a.out scripts/test_profile_pyspi.sh

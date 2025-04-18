@@ -26,9 +26,6 @@ N_CPUS = max(len(os.sched_getaffinity(0)), 1)
 cdt.SETTINGS.NJOBS = N_CPUS
 os.environ["OMP_NUM_THREADS"] = str(N_CPUS)
 
-if "octave" not in os.environ["PATH"] and "OCTAVE_PATH" in os.environ:
-    os.environ["PATH"] = f"{os.environ['PATH']}:{os.environ['OCTAVE_PATH']}"
-
 
 def main(
     spi: str,

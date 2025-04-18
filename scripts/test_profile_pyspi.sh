@@ -4,7 +4,7 @@
 #SBATCH --partition=RM-shared
 #SBATCH --ntasks=2
 #SBATCH --array=0-283
-#SBATCH --time=02:00:00
+#SBATCH --time=03:00:00
 
 set -ex
 
