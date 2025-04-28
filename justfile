@@ -50,3 +50,6 @@ export_spi_configs:
 test_profile_pyspi:
     mkdir -p logs/test_profile_pyspi 2>/dev/null
     sbatch -o logs/test_profile_pyspi/slurm-%A_%a.out scripts/test_profile_pyspi.sh
+
+analyze_test_profile_pyspi:
+    uv run jupyter execute --inplace notebooks/analyze_test_profile_pyspi.ipynb
