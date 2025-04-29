@@ -174,3 +174,81 @@
 - I can't easily downgrade sklearn, since skarf uses features from >= 1.6. E.g. in v1.5.2 there is [this metadata routing issue](https://github.com/scikit-learn/scikit-learn/pull/29634), which breaks tests in `LinearVAR`.
 
 - Decided that downgrading sklearn is too much hassle for now, and will just accept that these methods fail for `n_samples < n_features`. More concerning to me is why I could not catch the exception.
+
+
+## 2025-04-17
+
+- Seems like these failing SPIs above crash (no exception) with seg fault only if I initialize the JVM. Odd, bc these don't require the JVM..
+
+- Only the `infotheory` metrics require JVM/octave. I think we should only initialize these when creating an infotheory metric.
+
+- Updated the pyspi interface in skarf to do this. Now the above failing SPIs run without crashing (though they still raise exception in some cases).
+
+- Re-running the pyspi profile/test, with longer run time.
+
+
+## 2025-04-21
+
+- Second run of pyspi profile/test worked. 20 SPIs timed out, 6 hit OOM, none failed.
+
+- Following SPIs had (caught) errors:
+
+  ```
+  cov-sq_GraphicalLasso
+  cov_GraphicalLasso
+  prec-sq_GraphicalLasso
+  prec_GraphicalLasso
+  sgc_parametric_max_fs-1_fmin-0-25_fmax-0-5_order-None
+  sgc_parametric_max_fs-1_fmin-0_fmax-0-25_order-None
+  sgc_parametric_max_fs-1_fmin-1e-05_fmax-0-5_order-None
+  sgc_parametric_mean_fs-1_fmin-0-25_fmax-0-5_order-None
+  sgc_parametric_mean_fs-1_fmin-0_fmax-0-25_order-None
+  sgc_parametric_mean_fs-1_fmin-0_fmax-0-5_order-None
+  xme_gaussian_k10
+  ```
+
+  - GraphicalLasso fails bc of bad regularization strength, GraphicalLassoCV works fine though.
+
+  - sgc failes bc of following error:
+
+    ```
+    ValueError: Model estimation order did not converge at max_order = 50
+    ```
+
+    But variants of sgc with order not equal to None work fine.
+
+  - xme_gaussian_k10 fails with following error (rank deficient)
+
+    ```
+    infodynamics.utils.NonPositiveDefiniteMatrixException: infodynamics.utils.NonPositiveDefiniteMatrixException: CholeskyDecomposition is only performed on positive-definite matrices. Some reasons for non-positive-definite matrix are listed at http://www2.gsu.edu/~mkteer/npdmatri.html - note: a correlation matrix is non-positive-definite if you have more variables than observations. Failed row is 7
+    ```
+
+    But it works for `xme_gaussian_k1`.
+
+- So all of the failures represent just failing param config (which is normal), rather than failing functions.
+
+## 2025-04-24
+
+Updates to skarf, see the git commit log for more details.
+
+- Decomposition based linear VAR. This model is aimed at leveraging correlations between the features, which are known to interfere especially with sparse models. Specifically, we first fit some decomposition to the data (e.g. spatial ICA), and then constrain the linear model coefficients to the span of the decomposition basis (by multiplying the training data by the basis).
+
+- Simplifications and improvements to `CovarianceVAR`. In particular, implemented a per-target poly fit option which makes more consistent with `LinearVAR`, and fits data much better. Intuitively, makes sense that each target might benefit from its own poly transform. (Also, note that this makes the Covariance VAR more similar to the decomposition linear VAR, where the VAR coefficients per target are constrained to a particular basis. In the Covariance VAR case, the basis consists of polynomial terms generated from the covariance vector for the target. Whereas in the linear VAR case, the basis is a precomputed decomposition shared across targets.)
+
+
+## 2025-04-28
+
+Wrapped up pyspi filtering notebook based on the profile/test results. Filtering based on completion success and run time with a liberal knee point cutoff (1200s).
+
+Implemented script to compute SPI matrices with parallelism leveraging huggingface datasets.
+
+Launched job to compute overnight.
+
+## 2025-04-29
+
+Job overnight got through 50 SPIs. Decided this was going to take too long/too much compute. Made the SPI filtering stricter:
+
+- Exclude redundant square and precision SPIs (these can be computed later if needed).
+- Use stricter run time knee point cutoff of 300s.
+
+Also now running the job in batches using a job array.
