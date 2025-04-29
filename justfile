@@ -53,3 +53,9 @@ test_profile_pyspi:
 
 analyze_test_profile_pyspi:
     uv run jupyter execute --inplace notebooks/analyze_test_profile_pyspi.ipynb
+
+compute_hcp_1200_schaefer_pyspi:
+    mkdir -p logs/compute_hcp_1200_schaefer_pyspi 2>/dev/null
+    sbatch \
+    -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%j.out \
+    scripts/compute_hcp_1200_schaefer_pyspi.sh
