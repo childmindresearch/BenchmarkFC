@@ -252,3 +252,19 @@ Job overnight got through 50 SPIs. Decided this was going to take too long/too m
 - Use stricter run time knee point cutoff of 300s.
 
 Also now running the job in batches using a job array.
+
+## 2025-05-07
+
+The ACCESS cluster was down last week due to severe weather. Back up now. (In the meantime, rewrote bids2table hah.)
+
+Added a notebook for cleaning and analyzing the HCP behavioral data. Using the 58 behavioral measures that have been used across recent studies from the Yeo group.
+
+Standard scaled each behavioral measure and clipped to +/- 3 sigma (to reduce the influence of outlier scores). (Standard scaling in this context makes sense because the measures have very different and mostly arbitrary units.)
+
+Regressed gender, mean FD, and age from each behavioral measure. Nb, HCP restricted csv required for getting age. Mean FD computed from my previously computed FD data.
+
+Did a factor analysis also following previous Yeo lab papers (Ooi et al., 2022; Kong et al., 2023). Found 4 factors: dissatisfaction, cognition, support, and emotion. Consistent with their results, except support is extra and not reported there.
+
+Saved component scores to use as prediction targets.
+
+Note that the factors are computed on the full set of subjects. Previous works computed factors on a held out set of subjects "to prevent leakage". But I think this is not necessary, since we are not interested in testing the generalization of the factors, but the prediction of the factor targets from brain data.

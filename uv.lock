@@ -142,6 +142,7 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "skarf" },
+    { name = "statsmodels" },
     { name = "yaspy" },
 ]
 
@@ -168,6 +169,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = "==1.6.1" },
     { name = "scipy", specifier = "==1.15.2" },
     { name = "skarf", editable = "submodules/skarf" },
+    { name = "statsmodels", specifier = "==0.14.4" },
     { name = "yaspy", editable = "submodules/yaspy" },
 ]
 

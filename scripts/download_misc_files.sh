@@ -12,3 +12,6 @@ for subset in $subsets; do
     wget "https://github.com/ThomasYeoLab/CBIG/raw/refs/tags/v0.9.4-Li2019_GSR/stable_projects/preprocessing/Li2019_GSR/replication/scripts/HCP_lists/${subset}.txt" \
     -O "resources/column_lists/${subset}.txt"
 done
+
+wget "https://wiki.humanconnectome.org/docs/assets/HCP_S1200_DataDictionary_Oct_30_2023.csv" \
+    -O "resources/column_lists/HCP_S1200_DataDictionary_Oct_30_2023.csv"

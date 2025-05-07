@@ -30,6 +30,7 @@ dependencies = [
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
     "skarf",
+    "statsmodels==0.14.4",
     "yaspy",
 ]
 

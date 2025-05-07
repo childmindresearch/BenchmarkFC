@@ -59,3 +59,6 @@ compute_hcp_1200_schaefer_pyspi:
     sbatch \
     -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%j.out \
     scripts/compute_hcp_1200_schaefer_pyspi.sh
+
+analyze_hcp_1200_pheno:
+    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_pheno.ipynb
