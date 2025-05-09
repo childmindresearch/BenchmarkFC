@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-import cdt
 from skarf.covariance import load_spi_config_map, load_pyspi_optional_deps
 
 logging.basicConfig(
@@ -19,12 +18,6 @@ def main():
     outdir = root / "resources/spi_lists"
     outdir.mkdir(exist_ok=True)
 
-    n_cpus = len(os.sched_getaffinity(0)) or 1
-    # otherwise this is set to cpu_count = 128
-    # No GPU automatically detected. Setting SETTINGS.GPU to 0, and SETTINGS.NJOBS to
-    # cpu_count.
-    cdt.SETTINGS.NJOBS = n_cpus
-
     load_pyspi_optional_deps()
     spi_config_map, unavailable_spi_configs = load_spi_config_map(cache_dir=outdir)
     logging.info("Loaded SPIs: %d\n\n%s", len(spi_config_map), list(spi_config_map))
@@ -34,8 +27,22 @@ def main():
         unavailable_spi_configs,
     )
 
-    with (outdir / f"spi_list_all_{len(spi_config_map)}.txt").open("w") as f:
-        print("\n".join(spi_config_map), file=f)
+    # Save list of all SPIs.
+    all_spis = list(spi_config_map)
+    with (outdir / f"spi_list_all_{len(all_spis)}.txt").open("w") as f:
+        print("\n".join(all_spis), file=f)
+
+    # Exclude squared and precision SPIs which are redundant and can be easily computed
+    # after the fact.
+    distinct_spis = []
+    for spi in all_spis:
+        identifier = spi.split("_")[0]
+        if not (identifier.startswith("prec") or identifier.endswith("-sq")):
+            distinct_spis.append(spi)
+
+    logging.info(f"Found {len(distinct_spis)}/{len(all_spis)} distinct SPIs.")
+    with (outdir / f"spi_list_distinct_{len(distinct_spis)}.txt").open("w") as f:
+        print("\n".join(distinct_spis), file=f)
 
 
 if __name__ == "__main__":
