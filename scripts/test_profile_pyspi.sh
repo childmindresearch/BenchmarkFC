@@ -2,9 +2,9 @@
 
 #SBATCH --job-name=test_profile_pyspi
 #SBATCH --partition=RM-shared
-#SBATCH --ntasks=4
-#SBATCH --array=0-283
-#SBATCH --time=05:00:00
+#SBATCH --ntasks=2
+#SBATCH --array=0-246
+#SBATCH --time=04:00:00
 
 set -ex
 
@@ -15,11 +15,13 @@ set +a
 
 [[ -n "$PROJECT_ROOT" ]]
 
-# testing n < d, n = d and scaling n and d
-n_samples="[50,100,200,400,400]"
-n_features="[100,100,100,100,200]"
-parc_size=200
+export OMP_NUM_THREADS=2
 
-uv run python scripts/test_profile_pyspi.py \
-    --spi_id $SLURM_ARRAY_TASK_ID \
-    --n-samples $n_samples --n-features $n_features --parc-size $parc_size
+spi_list=( $(cat "resources/spi_lists/spi_list_distinct_247.txt") )
+spi=${spi_list[SLURM_ARRAY_TASK_ID]}
+
+sub="181131"
+out_dir="data/hcp_1200_rfmri_schaefer_pyspi_test_profile"
+
+uv run --no-sync python scripts/compute_hcp_1200_schaefer_pyspi.py \
+    --out-dir $out_dir $spi $sub

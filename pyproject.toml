@@ -31,6 +31,8 @@ dependencies = [
     "scipy==1.15.2",
     "skarf",
     "statsmodels==0.14.4",
+    "tqdm>=4.66.0",
+    "typer>=0.15.3",
     "yaspy",
 ]
 
