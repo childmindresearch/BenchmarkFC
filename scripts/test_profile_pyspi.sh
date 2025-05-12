@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=test_profile_pyspi
 #SBATCH --partition=RM-shared
-#SBATCH --ntasks=2
+#SBATCH --ntasks=4
 #SBATCH --array=0-246
 #SBATCH --time=04:00:00
 
