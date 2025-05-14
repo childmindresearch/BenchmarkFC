@@ -57,8 +57,8 @@ analyze_test_profile_pyspi:
 compute_hcp_1200_schaefer_pyspi:
     mkdir -p logs/compute_hcp_1200_schaefer_pyspi 2>/dev/null
     sbatch \
-    -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%j.out \
+    -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%A_%a.out \
     scripts/compute_hcp_1200_schaefer_pyspi.sh
 
-analyze_hcp_1200_pheno:
-    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_pheno.ipynb
+analyze_hcp_1200_behav:
+    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_behav.ipynb
