@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -48,15 +49,22 @@ def load_hcp_pheno(restricted: bool = False) -> pd.DataFrame:
     return hcp_pheno
 
 
-def load_hcp_behav() -> pd.DataFrame:
-    hcp_58_columns = (
+def load_hcp_behav_columns() -> list[str]:
+    # Get 58 behavioral columns used in Yeo lab papers.
+    hcp_behav_columns = (
         (PROJECT_ROOT / "resources/column_lists/58behaviors_age_sex.txt")
         .read_text()
         .splitlines()
-    )[:58]
+    )
+    # Drop age, sex.
+    hcp_behav_columns = hcp_behav_columns[:58]
+    return hcp_behav_columns
 
+
+def load_hcp_behav() -> pd.DataFrame:
+    hcp_behav_columns = load_hcp_behav_columns()
     hcp_pheno = load_hcp_pheno()
-    hcp_behav = hcp_pheno.loc[:, hcp_58_columns]
+    hcp_behav = hcp_pheno.loc[:, hcp_behav_columns]
     return hcp_behav
 
 
@@ -102,3 +110,18 @@ def load_hcp_family_groups() -> pd.Series:
         name="Family_Group",
     )
     return hcp_family_groups
+
+
+def load_hcp_behav_factors_topk():
+    hcp_factor_topk_path = (
+        PROJECT_ROOT / "results/hcp_1200_behav/hcp_1200_behav_factors_topk.json"
+    )
+    if not hcp_factor_topk_path.exists():
+        raise FileNotFoundError(
+            f"HCP factor top-k path {hcp_factor_topk_path} does not exist; "
+            "run analyze_hcp_1200_behav"
+        )
+
+    with hcp_factor_topk_path.open() as f:
+        hcp_factor_topk = json.load(f)
+    return hcp_factor_topk
