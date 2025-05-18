@@ -111,7 +111,7 @@ def load_hcp_family_groups() -> pd.Series:
 
 def load_hcp_behav_factors_topk():
     hcp_factor_topk_path = (
-        PROJECT_ROOT / "results/hcp_1200_behav/hcp_1200_behav_factors_topk.json"
+        PROJECT_ROOT / "resources/column_lists/hcp_1200_behav_factors_topk.json"
     )
     if not hcp_factor_topk_path.exists():
         raise FileNotFoundError(
