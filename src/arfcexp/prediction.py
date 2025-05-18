@@ -4,113 +4,23 @@ import numpy as np
 import pandas as pd
 from sklearn.base import (
     BaseEstimator,
-    OneToOneFeatureMixin,
     RegressorMixin,
-    TransformerMixin,
     MetaEstimatorMixin,
     clone,
     check_is_fitted,
 )
-from sklearn.compose import ColumnTransformer
-from sklearn.utils import check_array
-from sklearn.utils.validation import validate_data
 from sklearn.linear_model import LinearRegression
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import (
-    OneHotEncoder,
-    StandardScaler,
-    scale,
-)
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 from .hcp import load_hcp_behav_factors_topk, load_hcp_behav_columns
+from .transforms import HCPBehavTargetTransform, SampleScaler
 
 HCP_BEHAV_FACTORS_TOPK = load_hcp_behav_factors_topk()
 HCP_BEHAV_COLUMNS = load_hcp_behav_columns()
 EPS = np.finfo(np.float32).eps
-
-
-class SampleScaler(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
-    """Apply standard scaling to each sample individually."""
-
-    def fit(self, X: np.ndarray, y: None = None) -> Self:
-        validate_data(self, X, ensure_all_finite="allow-nan")
-        return self
-
-    def transform(self, X: np.ndarray, y: None = None) -> np.ndarray:
-        X = validate_data(self, X, ensure_all_finite="allow-nan")
-        X = scale(X, axis=1)
-        return X
-
-
-class HCPBehavTargetTransform(TransformerMixin, MetaEstimatorMixin, BaseEstimator):
-    scaler_: StandardScaler
-    covariate_transformer_: ColumnTransformer
-    covariate_regressor_: LinearRegression
-
-    def __init__(self, clip_threshold: float | None = 3.0):
-        super().__init__()
-        self.clip_threshold = clip_threshold
-
-    def fit(self, X: pd.DataFrame, y: np.ndarray) -> Self:
-        y = check_array(y, ensure_2d=False)
-        if y.ndim == 1:
-            y = y[:, None]
-
-        # Standard scale targets.
-        scaler = StandardScaler()
-        y_scaled = scaler.fit_transform(y)
-        if self.clip_threshold is not None:
-            y_scaled = np.clip(y_scaled, -self.clip_threshold, self.clip_threshold)
-
-        # Extract covariates and transform before regression.
-        covariates = X.loc[:, ["Gender", "Mean_FD", "Age_in_Yrs"]]
-        covariate_transformer = ColumnTransformer(
-            transformers=[
-                ("cat", OneHotEncoder(), ["Gender"]),
-                ("num", StandardScaler(), ["Mean_FD", "Age_in_Yrs"]),
-            ]
-        )
-        covariates = covariate_transformer.fit_transform(covariates)
-
-        # Fit OLS nuisance regression.
-        covariate_regressor = LinearRegression().fit(covariates, y_scaled)
-
-        self.scaler_ = scaler
-        self.covariate_transformer_ = covariate_transformer
-        self.covariate_regressor_ = covariate_regressor
-        return self
-
-    def transform(self, X: pd.DataFrame, y: np.ndarray) -> np.ndarray:
-        check_is_fitted(self)
-
-        y = check_array(y, ensure_2d=False)
-        is_1d = y.ndim == 1
-        if is_1d:
-            y = y[:, None]
-
-        y_scaled = self.scaler_.transform(y)
-        if self.clip_threshold is not None:
-            y_scaled = np.clip(y_scaled, -self.clip_threshold, self.clip_threshold)
-
-        covariates = X.loc[:, ["Gender", "Mean_FD", "Age_in_Yrs"]]
-        covariates = self.covariate_transformer_.transform(covariates)
-
-        y_scaled_res = y_scaled - self.covariate_regressor_.predict(covariates)
-
-        # Clip again in case nuisance regression predictions are bad.
-        if self.clip_threshold is not None:
-            y_scaled_res = np.clip(
-                y_scaled_res, -self.clip_threshold, self.clip_threshold
-            )
-
-        if is_1d:
-            y_scaled_res = np.squeeze(y_scaled_res, axis=1)
-        return y_scaled_res
-
-    def fit_transform(self, X: pd.DataFrame, y: np.ndarray) -> np.ndarray:
-        self.fit(X, y)
-        return self.transform(X, y)
 
 
 class HCPBehavRegressor(RegressorMixin, MetaEstimatorMixin, BaseEstimator):
@@ -135,13 +45,14 @@ class HCPBehavRegressor(RegressorMixin, MetaEstimatorMixin, BaseEstimator):
           combined with KRR and cosine kernel, this replicates the pearson correlation
           kernel used in Yeo lab works.)
         - Impute NaN with zero.
-        - Preprocess targets (standard scale, clip, and nuisance regression).
+        - Preprocess targets (nuisance regression, clip outliers, standard scale).
         - Extract targets (top-k average for factor targets).
         - Fit regression model.
     """
 
     feature_transform_: Pipeline
     target_transform_: HCPBehavTargetTransform
+    target_scaler_: StandardScaler
     regressor_: LinearRegression
 
     def __init__(
@@ -178,11 +89,18 @@ class HCPBehavRegressor(RegressorMixin, MetaEstimatorMixin, BaseEstimator):
         targets = target_transform.fit_transform(X, y)
         targets = self._get_targets(targets)
 
+        # Rescale the factor average targets
+        if self.target_name in HCP_BEHAV_FACTORS_TOPK:
+            target_scaler = StandardScaler(with_mean=False)
+            targets = target_scaler.fit_transform(targets[:, None]).squeeze(1)
+
         regressor: LinearRegression = clone(self.regressor)
         regressor.fit(features, targets, **fit_params)
 
         self.feature_transform_ = feature_transform
         self.target_transform_ = target_transform
+        if self.target_name in HCP_BEHAV_FACTORS_TOPK:
+            self.target_scaler_ = target_scaler
         self.regressor_ = regressor
         return self
 
@@ -193,15 +111,22 @@ class HCPBehavRegressor(RegressorMixin, MetaEstimatorMixin, BaseEstimator):
         preds = self.regressor_.predict(features)
         return preds
 
+    def transform_targets(self, X: pd.DataFrame, y: pd.DataFrame) -> np.ndarray:
+        targets = self.target_transform_.transform(X, y)
+        targets = self._get_targets(targets)
+        if self.target_name in HCP_BEHAV_FACTORS_TOPK:
+            targets = self.target_scaler_.transform(targets[:, None]).squeeze(1)
+        return targets
+
     def score(self, X: pd.DataFrame, y: pd.DataFrame) -> float:
         # Nb, there is another strategy where predictions are inverse transformed.
         # https://scikit-learn.org/stable/modules/generated/sklearn.compose.TransformedTargetRegressor.html
         # But the current approach is more consistent with prior works, e.g.  Kong 2023.
         check_is_fitted(self)
         preds = self.predict(X)
-        targets = self.target_transform_.transform(X, y)
-        targets = self._get_targets(targets)
-        return np.mean(corr_score(targets, preds))
+        targets = self.transform_targets(X, y)
+        score = -mean_squared_error(targets, preds)
+        return score
 
     def _get_features(self, X: pd.DataFrame) -> np.ndarray:
         # Get features, shape (N, D)

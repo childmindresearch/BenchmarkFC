@@ -16,8 +16,9 @@ import numpy as np
 import pandas as pd
 import pyarrow.dataset as pads
 import typer
-from sklearn.model_selection import GridSearchCV, GroupKFold
+from sklearn.model_selection import GridSearchCV, GroupKFold, GroupShuffleSplit
 from sklearn.kernel_ridge import KernelRidge
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.utils import check_random_state
 
 import arfcexp.hcp
@@ -29,9 +30,12 @@ logging.basicConfig(
     datefmt="%y-%m-%d %H:%M:%S",
 )
 
-# Number of outer train test/splits.
+# Number of outer loop train/test split repeats.
 NUM_SPLITS = 20
-NUM_INNER_SPLITS = 10
+# Outer loop test size.
+TEST_SIZE = 0.2
+# Number of inner loop CV splits.
+NUM_INNER_SPLITS = 5
 
 # Debug regularization strength
 # ALPHAS = [0.01, 0.1, 1.0]
@@ -41,8 +45,13 @@ NUM_INNER_SPLITS = 10
 #     0.00001, 0.0001, 0.001, 0.004, 0.007, 0.01, 0.04, 0.07,
 #     0.1, 0.4, 0.7, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 10, 15, 20
 # ]
-# Truncated Yeo regularization strengths.
-ALPHAS = [0.01, 0.04, 0.07, 0.1, 0.4, 0.7, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 10]
+
+# Modified Yeo regularization strengths.
+# Less low values, More high values.
+ALPHAS = [
+    0.01, 0.04, 0.07, 0.1, 0.4, 0.7, 1, 1.5, 2, 2.5, 3, 3.5,
+    4, 5, 10, 15, 20, 50, 100,
+]  # fmt: skip
 
 # Minimum fraction of subjects with at least one successfully computed run.
 MIN_VALID_SUB_FRACTION = 0.9
@@ -92,11 +101,6 @@ def main(
         / f"target-{target}"
     )
 
-    output_summary_path = out_dir / "results.json"
-    if output_summary_path.exists():
-        logging.info("Output already exists; exiting.")
-        return
-
     out_dir.mkdir(exist_ok=True, parents=True)
 
     logging.info(f"Loading matrices for {spi=}.")
@@ -134,10 +138,19 @@ def main(
     # Group k-fold outer loop cross-validation.
     # Group splitting used to ensure no related individuals split across train and test.
     split_seed = random_state.randint(1000, 10000)
-    splitter = GroupKFold(n_splits=NUM_SPLITS, shuffle=True, random_state=split_seed)
+    splitter = GroupShuffleSplit(
+        n_splits=NUM_SPLITS, test_size=TEST_SIZE, random_state=split_seed
+    )
     logging.info("Train/test split seed: %d", split_seed)
 
+    output_summary_path = out_dir / "results.json"
+
     for split, (train_ind, test_ind) in enumerate(splitter.split(X, groups=groups)):
+        state_path = out_dir / f"split-{split}__state.pkl"
+        if state_path.exists():
+            logging.info(f"State already exists for split={split}; skipping.")
+            continue
+
         X_train, X_test = X.iloc[train_ind], X.iloc[test_ind]
         y_train, y_test = y.iloc[train_ind], y.iloc[test_ind]
         groups_train = groups[train_ind]
@@ -151,11 +164,24 @@ def main(
             random_state=random_state,
         )
 
-        train_score = model.score(X_train, y_train)
-        test_score = model.score(X_test, y_test)
-
-        val_score = model.best_score_
         alpha = model.best_params_["regressor__alpha"]
+        best_model = model.best_estimator_
+
+        targets_train = best_model.transform_targets(X_train, y_train)
+        targets_test = best_model.transform_targets(X_test, y_test)
+
+        preds_train = best_model.predict(X_train)
+        preds_test = best_model.predict(X_test)
+
+        mse_train = mean_squared_error(targets_train, preds_train)
+        mse_test = mean_squared_error(targets_test, preds_test)
+        mse_val = -model.best_score_
+
+        r2_train = r2_score(targets_train, preds_train)
+        r2_test = r2_score(targets_test, preds_test)
+
+        corr_train = arfcexp.prediction.corr_score(targets_train, preds_train)
+        corr_test = arfcexp.prediction.corr_score(targets_test, preds_test)
 
         if alpha in {ALPHAS[0], ALPHAS[-1]}:
             logging.warning(f"Optimal alpha {alpha} on the grid boundary.")
@@ -163,18 +189,31 @@ def main(
         result = {
             **params,
             "split": split,
+            "n_train": len(X_train),
+            "n_test": len(X_test),
             "alpha": alpha,
-            "train_score": train_score,
-            "val_score": val_score,
-            "test_score": test_score,
+            "mse_train": mse_train,
+            "mse_val": mse_val,
+            "mse_test": mse_test,
+            "r2_train": r2_train,
+            "r2_test": r2_test,
+            "corr_train": corr_train,
+            "corr_test": corr_test,
         }
         logging.info(f"Result (split={split}):\n{json.dumps(result)}")
         with output_summary_path.open("a") as f:
             print(json.dumps(result), file=f)
 
-        state_path = out_dir / f"split-{split}__model.pkl"
+        state = {
+            **result,
+            "targets_train": targets_train,
+            "targets_test": targets_test,
+            "preds_train": preds_train,
+            "preds_test": preds_test,
+            "cv_results": model.cv_results_,
+        }
         with state_path.open("wb") as f:
-            pickle.dump(model, file=f)
+            pickle.dump(state, file=f)
 
 
 def fit(
