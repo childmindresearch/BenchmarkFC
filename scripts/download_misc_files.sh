@@ -13,5 +13,7 @@ for subset in $subsets; do
     -O "resources/column_lists/${subset}.txt"
 done
 
+head -n 58 resources/column_lists/58behaviors_age_sex.txt > resources/column_lists/58behaviors.txt
+
 wget "https://wiki.humanconnectome.org/docs/assets/HCP_S1200_DataDictionary_Oct_30_2023.csv" \
     -O "resources/column_lists/HCP_S1200_DataDictionary_Oct_30_2023.csv"

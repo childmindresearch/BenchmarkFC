@@ -49,15 +49,11 @@ def load_hcp_pheno(restricted: bool = False) -> pd.DataFrame:
     return hcp_pheno
 
 
-def load_hcp_behav_columns() -> list[str]:
+def load_hcp_behav_columns(subset: str = "58behaviors") -> list[str]:
     # Get 58 behavioral columns used in Yeo lab papers.
     hcp_behav_columns = (
-        (PROJECT_ROOT / "resources/column_lists/58behaviors_age_sex.txt")
-        .read_text()
-        .splitlines()
+        (PROJECT_ROOT / f"resources/column_lists/{subset}.txt").read_text().splitlines()
     )
-    # Drop age, sex.
-    hcp_behav_columns = hcp_behav_columns[:58]
     return hcp_behav_columns
 
 
