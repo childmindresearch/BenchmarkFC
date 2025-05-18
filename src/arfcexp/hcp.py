@@ -57,8 +57,8 @@ def load_hcp_behav_columns(subset: str = "58behaviors") -> list[str]:
     return hcp_behav_columns
 
 
-def load_hcp_behav() -> pd.DataFrame:
-    hcp_behav_columns = load_hcp_behav_columns()
+def load_hcp_behav(subset: str = "58behaviors") -> pd.DataFrame:
+    hcp_behav_columns = load_hcp_behav_columns(subset=subset)
     hcp_pheno = load_hcp_pheno()
     hcp_behav = hcp_pheno.loc[:, hcp_behav_columns]
     return hcp_behav

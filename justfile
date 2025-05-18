@@ -60,5 +60,14 @@ compute_hcp_1200_schaefer_pyspi:
     -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%A_%a.out \
     scripts/compute_hcp_1200_schaefer_pyspi.sh
 
+filter_hcp_1200_behav_measures:
+    uv run python scripts/filter_hcp_1200_behav_measures.py
+
 analyze_hcp_1200_behav:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_behav.ipynb
+
+eval_hcp_1200_pyspi_behav_prediction:
+    mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction 2>/dev/null
+    sbatch \
+    -o logs/eval_hcp_1200_pyspi_behav_prediction/slurm-%A_%a.out \
+    scripts/eval_hcp_1200_pyspi_behav_prediction.sh
