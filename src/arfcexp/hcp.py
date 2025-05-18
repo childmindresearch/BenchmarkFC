@@ -49,15 +49,16 @@ def load_hcp_pheno(restricted: bool = False) -> pd.DataFrame:
     return hcp_pheno
 
 
-def load_hcp_behav_columns(subset: str = "58behaviors") -> list[str]:
-    # Get 58 behavioral columns used in Yeo lab papers.
+def load_hcp_behav_columns(subset: str = "55behaviors_with_var") -> list[str]:
+    # 58 behavioral columns used in Yeo lab papers.
+    # 55 behaviors exclude 3 with too low variance.
     hcp_behav_columns = (
         (PROJECT_ROOT / f"resources/column_lists/{subset}.txt").read_text().splitlines()
     )
     return hcp_behav_columns
 
 
-def load_hcp_behav(subset: str = "58behaviors") -> pd.DataFrame:
+def load_hcp_behav(subset: str = "55behaviors_with_var") -> pd.DataFrame:
     hcp_behav_columns = load_hcp_behav_columns(subset=subset)
     hcp_pheno = load_hcp_pheno()
     hcp_behav = hcp_pheno.loc[:, hcp_behav_columns]
