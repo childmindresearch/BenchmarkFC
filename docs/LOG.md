@@ -268,3 +268,285 @@ Did a factor analysis also following previous Yeo lab papers (Ooi et al., 2022; 
 Saved component scores to use as prediction targets.
 
 Note that the factors are computed on the full set of subjects. Previous works computed factors on a held out set of subjects "to prevent leakage". But I think this is not necessary, since we are not interested in testing the generalization of the factors, but the prediction of the factor targets from brain data.
+
+## 2025-5-08
+
+Looking at outputs from batch pyspi job.
+
+```
+30925558_0   compute_p+         RM 1-00:00:00 2025-05-05T10:24:41            r043        128            128-00:40:32            1-00:00:19    TIMEOUT      0:0
+30925558_1   compute_p+         RM 1-00:00:00 2025-05-05T10:24:41            r202        128            128-00:40:32            1-00:00:19    TIMEOUT      0:0
+30925558_2   compute_p+         RM 1-00:00:00 2025-05-05T10:24:41            r381        128            7-01:40:16              01:19:32  COMPLETED      0:0
+30925558_3   compute_p+         RM 1-00:00:00 2025-05-05T10:24:41            r413        128            44-14:41:04              08:21:53  COMPLETED      0:0
+30925558_4   compute_p+         RM 1-00:00:00 2025-05-05T10:24:41            r052        128              01:06:08              00:00:31     FAILED      2:0
+```
+
+Two jobs completed successfully, one failed immediately, and two timed out.
+
+The two time out jobs timed out for frustrating reasons...
+
+```
+[INFO 25-05-05 10:28:10]: Computing PySPI on HCP 1200 rfMRI Schaefer:
+        spi_id=099 spi='je_kernel_W-0.5' parc_size=200 pool=3
+[INFO 25-05-05 10:28:10]: Saving to: /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/data/hcp_1200_rfmri_schaefer_pyspi/parc-200__pool-3/099__spi-je_kernel_W-0.5
+[INFO 25-05-05 10:28:10]: Running with 64 processes.
+[INFO 25-05-05 10:28:10]: Loading SPI: je_kernel_W-0.5
+[INFO 25-05-05 10:28:10]: Loading SPI config map from cache: /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/resources/spi_lists/spi_config_map_all.yaml
+[INFO 25-05-05 10:34:09]: Loaded PySPI optional depedencies: {'octave': True, 'java': True}
+[INFO 25-05-05 10:34:09]: SPICovariance(spi=<pyspi.statistics.infotheory.JointEntropy object at 0x14731c265fd0>)
+[INFO 25-05-05 10:34:09]: Loading time series dataset:
+        /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/data/hcp_1200_rfmri_schaefer_timeseries
+[INFO 25-05-05 10:34:10]: Computing SPI matrices
+Starting JVM with java class /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/.venv/lib/python3.11/site-packages/pyspi/lib/jidt/infodynamics.jar.
+Map (num_proc=64):   0%|          | 0/3468 [00:00<?, ? examples/s]/ocean/projects/med220004p/clane2/miniconda3/pkgs/openjdk-8.0.412-h2b85faf_2/jre/lib/rt.jar: invalid LOC header (bad signature)
+/ocean/projects/med220004p/clane2/miniconda3/pkgs/openjdk-8.0.412-h2b85faf_2/jre/lib/rt.jar: invalid LOC header (bad signature)
+/ocean/projects/med220004p/clane2/miniconda3/pkgs/openjdk-8.0.412-h2b85faf_2/jre/lib/rt.jar: invalid LOC header (bad signature)
+Map (num_proc=64):   0%|          | 1/3468 [00:00<08:56,  6.47 examples/s]/ocean/projects/med220004p/clane2/miniconda3/pkgs/openjdk-8.0.412-h2b85faf_2/jre/lib/rt.jar: invalid LOC header (bad signature)
+Map (num_proc=64):   3%|▎         | 96/3468 [00:18<01:08, 49.05 examples/s]slurmstepd: error: *** JOB 30932723 ON r202 CANCELLED AT 2025-05-06T10:25:00 DUE TO TIME LIMIT ***
+```
+
+```
+[INFO 25-05-05 13:20:03]: Computing PySPI on HCP 1200 rfMRI Schaefer:
+        spi_id=097 spi='je_gaussian' parc_size=200 pool=3
+[INFO 25-05-05 13:20:03]: Saving to: /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/data/hcp_1200_rfmri_schaefer_pyspi/parc-200__pool-3/097__spi-je_gaussian
+[INFO 25-05-05 13:20:03]: Running with 64 processes.
+[INFO 25-05-05 13:20:03]: Loading SPI: je_gaussian
+[INFO 25-05-05 13:20:03]: Loading SPI config map from cache: /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/resources/spi_lists/spi_config_map_all.yaml
+[INFO 25-05-05 13:21:21]: Loaded PySPI optional depedencies: {'octave': True, 'java': True}
+[INFO 25-05-05 13:21:21]: SPICovariance(spi=<pyspi.statistics.infotheory.JointEntropy object at 0x14a317539650>)
+[INFO 25-05-05 13:21:21]: Loading time series dataset:
+        /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/data/hcp_1200_rfmri_schaefer_timeseries
+[INFO 25-05-05 13:21:22]: Computing SPI matrices
+Starting JVM with java class /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/.venv/lib/python3.11/site-packages/pyspi/lib/jidt/infodynamics.jar.
+Map (num_proc=64):   0%|          | 0/3468 [00:00<?, ? examples/s]slurmstepd: error: *** JOB 30932722 ON r043 CANCELLED AT 2025-05-06T10:25:00 DUE TO TIME LIMIT ***
+```
+
+Both stalled for nearly 24 hours while computing a `je` SPI 🤬🤬.
+
+It would be better if I had a way to detect this inactivity in a large job and at least cancel the job.
+
+For now, it seems these java SPIs are suspect, at least when running in parallel. I also had the earlier issue where they interfere with other SPIs.
+
+These are all the infotheory SPIs, IDs in range `[098, 140]`.
+
+```
+je_gaussian
+je_kozachenko
+je_kernel_W-0.5
+ce_gaussian
+ce_kozachenko
+ce_kernel_W-0.5
+mi_gaussian
+mi_kraskov_NN-4_DCE
+mi_kernel_W-0.25
+tlmi_gaussian
+tlmi_kraskov_NN-4
+tlmi_kraskov_NN-4_DCE
+tlmi_kernel_W-0.25
+te_kraskov_NN-4_DCE_k-2_kt-1_l-1_lt-1
+te_kraskov_NN-4_DCE_k-1_kt-1_l-1_lt-1
+te_kernel_W-0.25_k-1
+gc_gaussian_k-1_kt-1_l-1_lt-1
+te_symbolic_k-1_kt-1_l-1_lt-1
+te_symbolic_k-10_kt-1_l-1_lt-1
+```
+
+Testing out `je_gaussian`. Expected to take 80 sec per run from profiling. Computed only 16 matrices in one hour with 4 procs (despite claim of 10 examples/s).
+
+```
+[INFO 25-05-08 11:59:42]: Loading time series dataset:
+        /ocean/projects/med220004p/clane2/ARFC/arfc-experiments/data/hcp_1200_rfmri_schaefer_timeseries
+Loading dataset from disk: 100%|██████████████████████████████████| 157/157 [00:00<00:00, 22608.09it/s]
+[INFO 25-05-08 11:59:43]: Computing SPI matrices
+Map (num_proc=4):   0%|▏                                      | 16/3468 [00:19<05:37, 10.22 examples/s]
+```
+
+I think it must have an issue with multiprocessing.
+
+Removed old pyspi outputs from `hcp_1200_rfmri_schaefer_pyspi_v1`, which were ran with the earlier spi list and only got through 50.
+
+
+## 2025-05-09
+
+To deal with this issue, I thought about just runing these SPIs separately. But I would ideally like to have a script that can run all of them cleanly.
+
+Going to implement a new single threaded script, and then parallelize outside with gnu parallel (this tends to be a more robust approach anyway).
+
+First want to check that these java SPIs can even run in parallel or if there is too much contention over the jar perhaps.
+
+```sh
+parallel uv run python scripts/test_profile_pyspi.py \
+  {} '[400]' '[200]' --outdir tmp/java_profile_pyspi_parallel ::: {97..102}
+```
+
+Yes, these all ran fine, good. Must be an issue with python multiprocessing incompatibility with the jvm interface.
+
+
+## 2025-05-12
+
+Ran pyspi over the weekend. Successful run.
+
+```
+JobID           JobName  Partition  Timelimit               Start        NodeList      NCPUS     MaxRSS    CPUTime     AveCPU    Elapsed      State ExitCode
+------------ ---------- ---------- ---------- ------------------- --------------- ---------- ---------- ---------- ---------- ---------- ---------- --------
+31083735_0   compute_p+         RM 1-00:00:00 2025-05-10T08:33:43            r307        128            108-13:47:44              20:21:28 OUT_OF_ME+    0:125
+31083735_0.+      batch                       2025-05-10T08:33:43            r307        128 244309668K 108-13:47:44 59-19:50:+   20:21:28 OUT_OF_ME+    0:125
+31083735_0.+     extern                       2025-05-10T08:33:43            r307        128      4304K 108-13:47:44   00:00:27   20:21:28  COMPLETED      0:0
+31083735_1   compute_p+         RM 1-00:00:00 2025-05-10T08:33:43            r313        128            111-01:10:24              20:49:18 OUT_OF_ME+    0:125
+31083735_1.+      batch                       2025-05-10T08:33:43            r313        128 243627228K 111-01:10:24 60-18:18:+   20:49:18 OUT_OF_ME+    0:125
+31083735_1.+     extern                       2025-05-10T08:33:43            r313        128      4064K 111-01:10:24   00:00:09   20:49:18  COMPLETED      0:0
+31083735_2   compute_p+         RM 1-00:00:00 2025-05-10T08:33:43            r347        128            109-10:44:16              20:31:17 OUT_OF_ME+    0:125
+31083735_2.+      batch                       2025-05-10T08:33:43            r347        128 244428552K 109-10:44:16 59-22:58:+   20:31:17 OUT_OF_ME+    0:125
+31083735_2.+     extern                       2025-05-10T08:33:43            r347        128      1192K 109-10:44:16   00:00:07   20:31:17  COMPLETED      0:0
+31083735_3   compute_p+         RM 1-00:00:00 2025-05-10T08:33:43            r402        128            111-12:28:48              20:54:36 OUT_OF_ME+    0:125
+31083735_3.+      batch                       2025-05-10T08:33:43            r402        128 241987184K 111-12:28:48 61-00:09:+   20:54:36 OUT_OF_ME+    0:125
+31083735_3.+     extern                       2025-05-10T08:33:43            r402        128      4092K 111-12:28:48   00:00:03   20:54:36  COMPLETED      0:0
+31083735_4   compute_p+         RM 1-00:00:00 2025-05-10T08:33:43            r415        128            103-10:10:08              19:23:31 OUT_OF_ME+    0:125
+31083735_4.+      batch                       2025-05-10T08:33:43            r415        128 244224532K 103-10:10:08 57-03:11:+   19:23:31 OUT_OF_ME+    0:125
+31083735_4.+     extern                       2025-05-10T08:33:43            r415        128        12K 103-10:10:08   00:00:05   19:23:31  COMPLETED      0:0
+```
+
+All jobs finished in roughly 20 hours. Initial estimate was 5 hours per job, so a bit slower than expected. But utilization is ok (~50%). All jobs report going out of memory, but it seems they weren't cancelled (perhaps because they ran on full nodes).
+
+All SPIs are complete except one:
+
+```bash
+output_dir="${PROJECT_ROOT}/data/hcp_1200_rfmri_schaefer_pyspi/parc-200__pool-3"
+cd $output_dir
+
+while read spi; do
+  dname=$(echo *_spi-${spi})
+  if [[ ! -d $dname ]]; then
+    echo $dname 0
+  else
+    count=$(echo ${dname}/*.arrow | wc -w)
+    if (( count != 867 )); then
+      echo $dname $count
+    fi
+  fi
+done < ${PROJECT_ROOT}/resources/spi_lists/spi_list_select_300s_142.txt
+```
+
+```
+123__spi-tlmi_kraskov_NN-4 9
+```
+
+I don't know why only this one failed or what happened exactly.
+
+
+## 2025-05-13
+
+I have tried to get away with a target preprocessing scheme applied jointly to all behavioral targets, before train test splitting. But I decided I can't do this for two reasons:
+
+1) Prior reference works apply fit the statistics for target preprocessing (scaling, nuisance regression) on train targets only, to avoid test data leakage.
+
+2) GPT convinced me I really do have to do this.
+
+Previously, I rationalized that this level of test set leakage was acceptable, since it is isolated from the training input data. But, I guess it is better to be fully rigorous and in agreement with prior methods.
+
+To this end, I'm implementing sklearn style transformers that guard against test data leakage for the target preprocessing steps:
+
+- scaling (ofc)
+- nuisance regression
+
+The one tricky case is the behavioral factors. I don't really want to refit factors to each train split separately, and then have to align them to some reference, and worry about replication. Rather, I think I will use the global factor analysis to cluster the 58 measures into 4 subsets, and just do plain average of the measures in each subset.
+
+## 2025-05-14
+
+Implemented an `HCPPhenoTargetTransform` and tested that it reproduces the results of the previous pipeline implemented in the `analyze_hcp_1200_pheno` notebook.
+
+## 2025-05-15
+
+Implemented `HCPPhenoRegressor` to encapsulate full preprocessing and model fit.
+
+
+## 2025-05-16
+
+Testing behavioral prediction pipeline. Renamed `HCPPheno*` -> `HCPBehav*`
+
+Finished behavioral prediction script and ran job before signing off. Will check tomorrow.
+
+## 2025-05-17
+
+Looking at results of behavioral prediction. First off, I made a mistake by setting the wrong SPI list in the slurm job script 😅.
+
+Rethinking how to preprocess the targets. I would like each target to be mean zero, stdev 1, so that mse is clearly interpretable as 1 - r2. I would also like to not be impacted by outliers and low variance measures.
+
+Decided that some of the behavioral measures in the 58 list have too low variance to include. Excluding those with `IQR / (max - min) < 0.01`. This excludes:
+
+```
+Mars_Final 0.0057
+Social_Task_Perc_TOM 0.0000
+ER40HAP 0.0000
+````
+
+New target preprocessing pipeline:
+
+- nuisance regression
+- clip boxplot outliers
+- standard scale
+
+Histograms look even better with this pipeline, and mean zero unit variance is nice.
+
+
+### Unstable pearson cross validation score
+
+Looking at the results of the behavioral prediction, I noticed that the different splits are a bit all over the place. Wildly different scores, different alphas.
+
+```
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 0, "alpha": 0.7, "train_score": 0.6421603364651384, "val_score": 0.006294984730124753, "test_score": 0.049982614331074204}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 1, "alpha": 0.7, "train_score": 0.6430477699318116, "val_score": 0.03497433831247067, "test_score": 0.17069091073426113}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 2, "alpha": 0.01, "train_score": 0.9867242390789055, "val_score": 0.07074390178972915, "test_score": -0.05293945926472552}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 3, "alpha": 0.01, "train_score": 0.9856713682718559, "val_score": 0.04628380588347194, "test_score": -0.007500372324638291}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 4, "alpha": 0.4, "train_score": 0.7013762715346581, "val_score": 0.042908665621448315, "test_score": 0.41036941340419747}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 5, "alpha": 0.01, "train_score": 0.9861410864568161, "val_score": 0.07701615653946206, "test_score": -0.09930342472959469}
+```
+
+I realized this is probably due the usage of Pearson correlation as the cross-validation metric. Crucially, pearson correlation rescales the predictions to be unit norm. This completely defeats the purpose of the shrinkage ridge regularization, and explains the instability of the CV.
+
+[Yeo Lab uses Pearson as the CV metric.](https://github.com/ThomasYeoLab/CBIG/blob/v0.29.2-Kong2022_update/utilities/matlab/predictive_models/KernelRidgeRegression/CBIG_KRR_innerloop_cv.m#L219)
+
+Instead, we will use MSE as the CV metric, which should behave better.
+
+Indeed, testing it out in the same case as above, now we get full shrinkage to zero with consistent alpha=10 because the targets are not predictable...
+
+```
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 0, "alpha": 10, "mse_train": 0.9611246216342486, "mse_val": 1.0180919079534982, "mse_test": 0.7745180700624525, "r2_train": 0.03887537836575139, "r2_test": -0.03562758869713534, "corr_train": 0.3971565620440809, "corr_test": 0.02492666684960681}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 1, "alpha": 10, "mse_train": 0.9610266408999235, "mse_val": 1.0082850325203854, "mse_test": 0.8623298339909494, "r2_train": 0.03897335910007671, "r2_test": 0.009632248040231106, "corr_train": 0.3919914253477742, "corr_test": 0.1419858124320163}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 2, "alpha": 10, "mse_train": 0.9600191177091754, "mse_val": 1.0105944022284774, "mse_test": 1.6128013937627186, "r2_train": 0.03998088229082464, "r2_test": -0.011360685443246643, "corr_train": 0.3743946095564662, "corr_test": -0.039428046353294326}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 3, "alpha": 10, "mse_train": 0.9621211490035952, "mse_val": 1.023441512967337, "mse_test": 0.8467339203776794, "r2_train": 0.03787885099640487, "r2_test": -0.12109222677269948, "corr_train": 0.42370800789429663, "corr_test": 0.14416719403204845}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 4, "alpha": 10, "mse_train": 0.9632325204941122, "mse_val": 1.0129599954959976, "mse_test": 1.3308963907659532, "r2_train": 0.03676747950588777, "r2_test": -0.03296702357648451, "corr_train": 0.39791043057665476, "corr_test": 0.43918166412960613}
+{"spi": "cov_GraphicalLassoCV", "parc_size": 200, "pool": 3, "target": "Dissatisfaction", "seed": 2142, "split": 5, "alpha": 10, "mse_train": 0.960479340705597, "mse_val": 1.0100373474627873, "mse_test": 1.0633947982759717, "r2_train": 0.03952065929440263, "r2_test": -0.01437710350610466, "corr_train": 0.4048800844042982, "corr_test": -0.019794301259891005}
+```
+
+Now looking at a target where prediction is actually good (Cognition), I'm a little annoyed that the variance in the test metric is this high.
+
+```
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 0, "alpha": 0.4, "mse_train": 0.4412719525576985, "mse_val": 0.8251346452792333, "mse_test": 0.8867604074436611, "r2_train": 0.5587280474423015, "r2_test": 0.19719826393842643, "corr_train": 0.8154691954195461, "corr_test": 0.4680292899183919}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 1, "alpha": 0.4, "mse_train": 0.4354918855684301, "mse_val": 0.8449765815744847, "mse_test": 0.6292856382852028, "r2_train": 0.5645081144315699, "r2_test": -0.03059304039084143, "corr_train": 0.8184052548865286, "corr_test": 0.2160045294821904}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 2, "alpha": 0.4, "mse_train": 0.4426833462853164, "mse_val": 0.8505979629822156, "mse_test": 0.4697452639967915, "r2_train": 0.5573166537146835, "r2_test": 0.30127402560509975, "corr_train": 0.8169863116630505, "corr_test": 0.5550368328539221}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 3, "alpha": 0.4, "mse_train": 0.43973320708982405, "mse_val": 0.82466104279595, "mse_test": 0.7286635202188009, "r2_train": 0.5602667929101759, "r2_test": 0.09283941674709784, "corr_train": 0.8163914421737204, "corr_test": 0.3339827610617342}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 4, "alpha": 0.4, "mse_train": 0.44542690111488026, "mse_val": 0.837328124638159, "mse_test": 0.7897997267580584, "r2_train": 0.5545730988851196, "r2_test": 0.261055304358221, "corr_train": 0.8130245405326928, "corr_test": 0.5753296296759542}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 5, "alpha": 0.4, "mse_train": 0.4478148986844923, "mse_val": 0.8727414165095275, "mse_test": 1.0144237185177405, "r2_train": 0.5521851013155077, "r2_test": 0.3107254568376149, "corr_train": 0.8132944875660526, "corr_test": 0.594690266802565}
+```
+
+I think the test splits are just too small (5%, ~44 samples). Trying out an outer loop CV strategy using group shuffle split with a fixed test size of 20%. This should be more stable.
+
+```
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 0, "alpha": 0.4, "mse_train": 0.430620676946194, "mse_val": 0.8789212214707447, "mse_test": 0.6487049202014888, "r2_train": 0.569379323053806, "r2_test": 0.1597874143760476, "corr_train": 0.8290942523583859, "corr_test": 0.4031988599833575}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 1, "alpha": 0.4, "mse_train": 0.43854148846073054, "mse_val": 0.8787438339745526, "mse_test": 0.900018099526243, "r2_train": 0.5614585115392694, "r2_test": 0.20695963849381838, "corr_train": 0.8249629118347317, "corr_test": 0.4718427232478075}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 2, "alpha": 0.4, "mse_train": 0.4302699871261694, "mse_val": 0.8300194387297998, "mse_test": 0.8373165447010885, "r2_train": 0.5697300128738307, "r2_test": 0.12876414871426656, "corr_train": 0.8313448078987662, "corr_test": 0.3956113638242669}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 3, "alpha": 0.4, "mse_train": 0.4435186538811436, "mse_val": 0.8691957593685344, "mse_test": 0.6997907579108716, "r2_train": 0.5564813461188565, "r2_test": 0.24887262232444696, "corr_train": 0.8233509592942332, "corr_test": 0.517085519640998}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 4, "alpha": 0.4, "mse_train": 0.43974711907420594, "mse_val": 0.8626304071711859, "mse_test": 0.8469478640915832, "r2_train": 0.5602528809257941, "r2_test": 0.21279770998501168, "corr_train": 0.8253299839254685, "corr_test": 0.4704915831511565}
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 2142, "split": 5, "alpha": 0.4, "mse_train": 0.432177284988686, "mse_val": 0.833255714218285, "mse_test": 0.8878615790534914, "r2_train": 0.5678227150113138, "r2_test": 0.11851564557450822, "corr_train": 0.8272552054767326, "corr_test": 0.37040210818386465}
+```
+
+Definitely more stable, ok.
+
+One question, why is the test MSE lower and more variable than val MSE? Two possible reasons I can think of: (1) the val MSE is an average over k (5) folds, the test MSE is a single estimate, and (2) the val MSE is results from fitting with a smaller training dataset size (0.64 vs 0.8).
+
+## 2025-05-18
+
+Analyzing results of behavioral prediction. Seems all jobs completed successfully, great.
+
+Initial pass of results, looks like a large subset of SPIs can predict the cognition measures (none reliably better than emprical covariance, as we've seen before). Suprisingly though, it seems no SPI can predict any of the other four factors better than chance. Weird... Will be looking into this more.
