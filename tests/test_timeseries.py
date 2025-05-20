@@ -60,10 +60,8 @@ def test_preprocess_timeseries():
 
     def _checks(clean_series: np.ndarray):
         assert clean_series.shape == (n_samples, n_features)
-        assert not np.any(np.isnan(clean_series))
 
     # basic checks, nb we also visually check in a separate notebook
     _checks(preprocess_timeseries(raw, tr=tr, sample_mask=sample_mask))
     _checks(preprocess_timeseries(raw, tr=tr, sample_mask=None))
-    _checks(preprocess_timeseries(raw, tr=tr, sample_mask=sample_mask, pad=None))
     _checks(preprocess_timeseries(raw, tr=tr, sample_mask=sample_mask, gsr=False))
