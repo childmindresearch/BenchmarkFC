@@ -26,5 +26,8 @@ spi=${spi_list[spi_idx]}
 target=${targets[target_idx]}
 echo $spi $target
 
+seed="2142"
+out_dir="results/hcp_1200_pyspi_behav_prediction_factor_full"
+
 uv run --no-sync python scripts/eval_hcp_1200_pyspi_behav_prediction.py \
-    --spi ${spi} --target ${target}
+    --spi ${spi} --target ${target} --seed ${seed} --out-dir ${out_dir}

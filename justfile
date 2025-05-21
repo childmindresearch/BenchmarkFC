@@ -60,14 +60,29 @@ compute_hcp_1200_schaefer_pyspi:
     -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%A_%a.out \
     scripts/compute_hcp_1200_schaefer_pyspi.sh
 
+# Remove behavioral measures from the original list of 58 that have insufficient
+# variance across subjects.
 filter_hcp_1200_behav_measures:
     uv run python scripts/filter_hcp_1200_behav_measures.py
 
+# Analyze HCP behavioral measures.
+# - Visualize raw and cleaned histograms for each measure.
+# - Compute population-wide factors and visualize.
 analyze_hcp_1200_behav:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_behav.ipynb
 
-eval_hcp_1200_pyspi_behav_prediction:
-    mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction 2>/dev/null
+# Baseline FC - behavioral prediction predicting 55 targets + 4 factors using only
+# empirical covariance.
+eval_hcp_1200_pyspi_behav_prediction_all_targets_cov:
+    mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction_all_targets_cov 2>/dev/null
     sbatch \
-    -o logs/eval_hcp_1200_pyspi_behav_prediction/slurm-%A_%a.out \
-    scripts/eval_hcp_1200_pyspi_behav_prediction.sh
+    -o logs/eval_hcp_1200_pyspi_behav_prediction_all_targets_cov/slurm-%A_%a.out \
+    scripts/eval_hcp_1200_pyspi_behav_prediction_all_targets_cov.sh
+
+# FC - behavioral prediction predicting 4 factor-based average measures, independently
+# using each of the 142 PySPI SPIs as features.
+eval_hcp_1200_pyspi_behav_prediction_factor_full:
+    mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction_factor_full 2>/dev/null
+    sbatch \
+    -o logs/eval_hcp_1200_pyspi_behav_prediction_factor_full/slurm-%A_%a.out \
+    scripts/eval_hcp_1200_pyspi_behav_prediction_factor_full.sh
