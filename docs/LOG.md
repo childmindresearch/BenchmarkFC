@@ -550,3 +550,58 @@ One question, why is the test MSE lower and more variable than val MSE? Two poss
 Analyzing results of behavioral prediction. Seems all jobs completed successfully, great.
 
 Initial pass of results, looks like a large subset of SPIs can predict the cognition measures (none reliably better than emprical covariance, as we've seen before). Suprisingly though, it seems no SPI can predict any of the other four factors better than chance. Weird... Will be looking into this more.
+
+## 2025-05-21
+
+Ran a baseline behavioral prediction of all 55 targets + 4 factors using just empirical covariance features. Want to find out which targets are predictable and which aren't.
+
+To test for which are reliably predictable, I want to also do a permutation test.
+
+I've realized also that I'm perhaps spending too much time recomputing the kernel every iteration. I timed fitting a kernel ridge on this scale of data, it takes 500 ms for cosine kernel, and 15 ms for precomputed kernel. So I think probably have to do it.
+
+Also, the implementation of the target transform is overly coupled with the regression model. One concrete challenge is if I shuffle the targets for a permutation test, it breaks the coupling between targets and covariates, which I don't want.
+
+Decided to revise the implementation:
+
+1. Compute kernel once and use sklearn `_safe_split` to correctly do data splitting (`GridSearchCV` already does this.)
+
+2. Move the covariates into targets, and consolidate all target preprocessing in the behavioral target transform estimator.
+
+## 2025-05-22
+
+Testing the updated implementation and checking if I reproduce earlier results. Original implementation.
+
+```
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "seed": 3293, "split": 0, "n_train": 684, "n_test": 183, "alpha": 0.4, "mse_train": 0.42551154966429866, "mse_val": 0.8061305437803726, "mse_test": 0.8511619934191628, "r2_train": 0.5744884503357013, "r2_test": 0.14118010572391992, "corr_train": 0.8252429869810961, "corr_test": 0.38107201487717346}
+```
+
+Updated implementation v1.
+
+```
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "n_splits": 20, "perm_test": false, "seed": 3293, "split": 0, "n_train": 684, "n_test": 183, "alpha": 0.4, "mse_train": 0.4255110489727128, "mse_val": 0.7958018914730597, "mse_test": 0.8511616381915343, "r2_train": 0.5744889510272873, "r2_test": 0.14118046414752983, "corr_train": 0.8252433414826901, "corr_test": 0.3810724135667257}
+```
+
+The onle glaring difference is the validation loss. Realized I have the target transform outside the grid search. But this means we have leak during CV.
+
+Moving target transform inside `GridSearchCV`.
+
+```
+{"spi": "cov_EmpiricalCovariance", "parc_size": 200, "pool": 3, "target": "Cognition", "n_splits": 20, "perm_test": false, "seed": 3293, "split": 0, "n_train": 684, "n_test": 183, "alpha": 0.4, "mse_train": 0.4255110489727128, "mse_val": 0.8061301002483316, "mse_test": 0.8511616381915343, "r2_train": 0.5744889510272873, "r2_test": 0.14118046414752983, "corr_train": 0.8252433414826901, "corr_test": 0.3810724135667257}
+```
+
+The results are now the same up to numerical precision. The one thing I've changed with the actual pipeline is now I do nuisance regression on only the required subset of the behaioral columns, rather than all, which is a waste.
+
+I checked that indeed (surprisingly) having extra targets can change the numerical values of the regression coefficients, though only up to numerical precision. Matmuls I guess.
+
+```python
+X = np.random.randn(1000, 3)
+y = np.random.randn(1000, 10)
+ols_1 = LinearRegression().fit(X, y)
+ols_2 = LinearRegression().fit(X, y)
+ols_3 = LinearRegression().fit(X, y[:, :5])
+np.all(ols_1.coef_ == ols_2.coef_)          # True
+np.all(ols_1.coef_[:5] == ols_3.coef_)      # False
+np.allclose(ols_1.coef_[:5], ols_3.coef_)   # True
+```
+
+Worth it, the new implementation is more than 10x faster.
