@@ -16,13 +16,17 @@ import numpy as np
 import pandas as pd
 import pyarrow.dataset as pads
 import typer
+import yaml
 from sklearn.model_selection import GridSearchCV, GroupKFold, GroupShuffleSplit
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.utils import check_random_state
+from sklearn.utils.metaestimators import _safe_split
 
 import arfcexp.hcp
 import arfcexp.prediction
+import arfcexp.transforms
 
 logging.basicConfig(
     format="[%(levelname)s %(asctime)s]: %(message)s",
@@ -30,8 +34,6 @@ logging.basicConfig(
     datefmt="%y-%m-%d %H:%M:%S",
 )
 
-# Number of outer loop train/test split repeats.
-NUM_SPLITS = 20
 # Outer loop test size.
 TEST_SIZE = 0.2
 # Number of inner loop CV splits.
@@ -62,6 +64,8 @@ def main(
     parc_size: int = 200,
     pool: int = 3,
     target: str = "Cognition",
+    n_splits: int = 20,
+    perm_test: bool = False,
     seed: int = 2142,
     out_dir: str | None = None,
 ):
@@ -70,6 +74,8 @@ def main(
         "parc_size": parc_size,
         "pool": pool,
         "target": target,
+        "n_splits": n_splits,
+        "perm_test": perm_test,
         "seed": seed,
     }
 
@@ -95,13 +101,16 @@ def main(
 
     out_dir = (
         out_dir
-        / f"parc-{parc_size}__pool-{pool}"
-        / f"seed-{seed}"
+        / f"parc-{parc_size}__pool-{pool}__perm-{int(perm_test)}__seed-{seed}"
         / f"{spi_id:03d}__spi-{spi}"
         / f"target-{target}"
     )
 
     out_dir.mkdir(exist_ok=True, parents=True)
+
+    # Save experiment params.
+    with (out_dir / "params.yaml").open("w") as f:
+        yaml.safe_dump(params, f, sort_keys=False)
 
     logging.info(f"Loading matrices for {spi=}.")
     mats_dir = (
@@ -132,16 +141,23 @@ def main(
     covariates = arfcexp.hcp.load_hcp_covariates().loc[sub_list]
     groups = arfcexp.hcp.load_hcp_family_groups().loc[sub_list].values
 
-    X = pd.concat([covariates, avg_mats_df], axis=1)
-    y = behav
+    X = np.stack(avg_mats_df["Matrix"].values)
+    y = pd.concat([covariates, behav], axis=1)
+
+    # Pre-compute NxN kernel matrix.
+    X = compute_pearson_kernel(X)
 
     # Group k-fold outer loop cross-validation.
     # Group splitting used to ensure no related individuals split across train and test.
     split_seed = random_state.randint(1000, 10000)
     splitter = GroupShuffleSplit(
-        n_splits=NUM_SPLITS, test_size=TEST_SIZE, random_state=split_seed
+        n_splits=n_splits, test_size=TEST_SIZE, random_state=split_seed
     )
     logging.info("Train/test split seed: %d", split_seed)
+
+    if perm_test:
+        perm_seed = random_state.randint(1000, 10000)
+        perm_random_state = check_random_state(perm_seed)
 
     output_summary_path = out_dir / "results.json"
 
@@ -151,24 +167,44 @@ def main(
             logging.info(f"State already exists for split={split}; skipping.")
             continue
 
-        X_train, X_test = X.iloc[train_ind], X.iloc[test_ind]
-        y_train, y_test = y.iloc[train_ind], y.iloc[test_ind]
-        groups_train = groups[train_ind]
-
-        model = fit(
-            X=X_train,
-            y=y_train,
-            groups=groups_train,
-            target_name=target,
-            n_splits=NUM_INNER_SPLITS,
-            random_state=random_state,
+        # Initialize model. Note we do this inside the loop rather than just once in order
+        # to sample a new CV seed each time. No other reason really. Technically we
+        # could probably just update the CV seed in place..
+        cv_seed = random_state.randint(1000, 10000)
+        model = GridSearchCV(
+            arfcexp.prediction.TargetTransformEstimator(
+                KernelRidge(kernel="precomputed"),
+                arfcexp.transforms.HCPBehavTargetTransform(target_name=target),
+                scoring="neg_mean_squared_error",
+            ),
+            param_grid={"estimator__alpha": ALPHAS},
+            cv=GroupKFold(
+                n_splits=NUM_INNER_SPLITS,
+                shuffle=True,
+                random_state=cv_seed,
+            ),
+            verbose=0,
         )
 
-        alpha = model.best_params_["regressor__alpha"]
-        best_model = model.best_estimator_
+        # Permute targets for permutation test.
+        if perm_test:
+            perm_indices = perm_random_state.permutation(len(y))
+            y_split = y.iloc[perm_indices]
+        else:
+            perm_indices = None
+            y_split = y
 
-        targets_train = best_model.transform_targets(X_train, y_train)
-        targets_test = best_model.transform_targets(X_test, y_test)
+        # Split data safely, respecting the precomputed kernel.
+        X_train, y_train = _safe_split(model, X, y_split, train_ind)
+        X_test, y_test = _safe_split(model, X, y_split, test_ind, train_ind)
+        groups_train = groups[train_ind]
+
+        model.fit(X_train, y_train, groups=groups_train)
+        alpha = model.best_params_["estimator__alpha"]
+
+        best_model = model.best_estimator_
+        targets_train = best_model.target_transform_.transform(y_train)
+        targets_test = best_model.target_transform_.transform(y_test)
 
         preds_train = best_model.predict(X_train)
         preds_test = best_model.predict(X_test)
@@ -206,6 +242,7 @@ def main(
 
         state = {
             **result,
+            "cv_seed": cv_seed,
             "targets_train": targets_train,
             "targets_test": targets_test,
             "preds_train": preds_train,
@@ -216,34 +253,14 @@ def main(
             pickle.dump(state, file=f)
 
 
-def fit(
-    X: pd.DataFrame,
-    y: pd.DataFrame,
-    groups: np.ndarray,
-    target_name: str,
-    n_splits: int = NUM_INNER_SPLITS,
-    random_state: np.random.RandomState | None = None,
-):
-    random_state = check_random_state(random_state)
-
-    model = arfcexp.prediction.HCPBehavRegressor(
-        KernelRidge(kernel="cosine"),
-        feature_name="Matrix",
-        target_name=target_name,
-    )
-
-    # Fixed CV seed across all CV iterations, for reproducible splitting.
-    cv_seed = random_state.randint(1000, 10000)
-
-    model = GridSearchCV(
-        model,
-        param_grid={"regressor__alpha": ALPHAS},
-        cv=GroupKFold(n_splits=n_splits, shuffle=True, random_state=cv_seed),
-        verbose=3,
-    )
-
-    model.fit(X, y, groups=groups)
-    return model
+def compute_pearson_kernel(X: np.ndarray) -> np.ndarray:
+    # Center each sample
+    X = X - np.nanmean(X, axis=1, keepdims=True)
+    # Fill NaN.
+    X = np.where(np.isnan(X), 0.0, X)
+    # Cosine kernel, i.e. Pearson correlation since the samples are centered.
+    K = cosine_similarity(X)
+    return K
 
 
 def load_avg_mats(mats_dir: Path, sub_list: list[str]) -> pd.DataFrame:

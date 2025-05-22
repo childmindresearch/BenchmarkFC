@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Self
 
 import numpy as np
@@ -14,10 +15,22 @@ from sklearn.utils import check_array
 from sklearn.utils.validation import validate_data
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import (
+    KBinsDiscretizer,
     OneHotEncoder,
     StandardScaler,
     scale,
 )
+
+from .hcp import load_hcp_behav_factors_topk, load_hcp_behav_columns
+
+
+HCP_BEHAV_COLUMNS = load_hcp_behav_columns()
+HCP_BEHAV_COLUMNS_MAP = {col: ii for ii, col in enumerate(HCP_BEHAV_COLUMNS)}
+
+HCP_COVARIATE_COLUMNS = ["Gender", "Mean_FD", "Age_in_Yrs"]
+
+# Load lazily, bc may not exist.
+_cache_load_hcp_behav_factors_topk = lru_cache(load_hcp_behav_factors_topk)
 
 
 class SampleScaler(OneToOneFeatureMixin, TransformerMixin, BaseEstimator):
@@ -61,20 +74,38 @@ class ClipOutliers(TransformerMixin, BaseEstimator):
 class HCPBehavTargetTransform(TransformerMixin, MetaEstimatorMixin, BaseEstimator):
     covariate_transformer_: ColumnTransformer
     covariate_regressor_: LinearRegression
-    clip_outliers_: ClipOutliers
+    clip_outliers_: ClipOutliers | None
     scaler_: StandardScaler
+    re_scaler_: StandardScaler | None
+    quantizer_: KBinsDiscretizer | None
 
-    def __init__(self, clip: bool = True):
+    def __init__(
+        self,
+        target_name: str | None = None,
+        clip: bool = True,
+        n_bins: int | None = None,
+    ):
         super().__init__()
+        self.target_name = target_name
         self.clip = clip
+        self.n_bins = n_bins
 
-    def fit(self, X: pd.DataFrame, y: np.ndarray) -> Self:
-        y = check_array(y, ensure_2d=False)
-        if y.ndim == 1:
-            y = y[:, None]
+    def fit_transform(self, X: pd.DataFrame, y: None = None) -> np.ndarray:
+        """Fit HCP behavioral target transform.
 
-        # Extract covariates and transform before regression.
-        covariates = X.loc[:, ["Gender", "Mean_FD", "Age_in_Yrs"]]
+        Args:
+            X: HCP behavioral dataframe indexed by subject ID. First three columns are
+                the covariates Gender, Mean_FD, Age_in_Yrs. Remaining columns are the
+                behavioral measures themselves.
+        """
+        covariates, y = self._split_covariates_y(X)
+
+        # Subset target columns
+        ind, weight = self._get_target_indices_weight()
+        if ind is not None:
+            y = y[:, ind]
+
+        # Encode covariates
         covariate_transformer = ColumnTransformer(
             transformers=[
                 ("cat", OneHotEncoder(), ["Gender"]),
@@ -91,38 +122,107 @@ class HCPBehavTargetTransform(TransformerMixin, MetaEstimatorMixin, BaseEstimato
         if self.clip:
             clip_outliers = ClipOutliers().fit(y_res)
             y_res = clip_outliers.transform(y_res)
+        else:
+            clip_outliers = None
 
-        # Standard scale targets (after removing variance due to nuisance factors).
-        scaler = StandardScaler().fit(y_res)
+        # Standard scale targets.
+        scaler = StandardScaler()
+        y_res_scaled = scaler.fit_transform(y_res)
+
+        # Take weighted average of targets and re-scale to have variance 1.
+        if weight is not None:
+            y_res_scaled = y_res_scaled @ weight[:, None]
+            re_scaler = StandardScaler(with_mean=False)
+            y_res_scaled = re_scaler.fit_transform(y_res_scaled)
+        else:
+            re_scaler = None
+
+        # Quantize the the continuous target(s) to a fixed number of quantile bins.
+        if self.n_bins:
+            quantizer = KBinsDiscretizer(
+                n_bins=self.n_bins,
+                encode="ordinal",
+                strategy="quantile",
+                subsample=None,
+            )
+            y_res_scaled = quantizer.fit_transform(y_res_scaled).astype(np.int32)
+        else:
+            quantizer = None
+
+        # Squeeze to single target.
+        if y_res_scaled.shape[1] == 1:
+            y_res_scaled = np.squeeze(y_res_scaled, 1)
 
         self.covariate_transformer_ = covariate_transformer
         self.covariate_regressor_ = covariate_regressor
-        if self.clip:
-            self.clip_outliers_ = clip_outliers
+        self.clip_outliers_ = clip_outliers
         self.scaler_ = scaler
+        self.re_scaler_ = re_scaler
+        self.quantizer_ = quantizer
+
+        return y_res_scaled
+
+    def fit(self, X: pd.DataFrame, y: None = None) -> Self:
+        self.fit_transform(X)
         return self
 
-    def transform(self, X: pd.DataFrame, y: np.ndarray) -> np.ndarray:
+    def transform(self, X: pd.DataFrame, y: None = None) -> np.ndarray:
         check_is_fitted(self)
 
-        y = check_array(y, ensure_2d=False)
-        is_1d = y.ndim == 1
-        if is_1d:
-            y = y[:, None]
+        # Note, in this context X = targets
+        covariates, y = self._split_covariates_y(X)
 
-        covariates = X.loc[:, ["Gender", "Mean_FD", "Age_in_Yrs"]]
+        # Subset target columns
+        ind, weight = self._get_target_indices_weight()
+        if ind is not None:
+            y = y[:, ind]
+
+        # Nuisance regression using pre-estimated coefficients
         covariates = self.covariate_transformer_.transform(covariates)
         y_res = y - self.covariate_regressor_.predict(covariates)
 
+        # Clip outliers using pre-estimated thresholds
         if self.clip:
             y_res = self.clip_outliers_.transform(y_res)
 
+        # Standard scale each target
         y_res_scaled = self.scaler_.transform(y_res)
 
-        if is_1d:
-            y_res_scaled = np.squeeze(y_res_scaled, axis=1)
+        # Weighted average and re-scale to unit variance
+        if weight is not None:
+            y_res_scaled = y_res_scaled @ weight[:, None]
+            y_res_scaled = self.re_scaler_.transform(y_res_scaled)
+
+        # Quantize to discrete quantile bins.
+        if self.n_bins:
+            y_res_scaled = self.quantizer_.transform(y_res_scaled).astype(np.int32)
+
+        # Squeeze to single target.
+        if y_res_scaled.shape[1] == 1:
+            y_res_scaled = np.squeeze(y_res_scaled, 1)
         return y_res_scaled
 
-    def fit_transform(self, X: pd.DataFrame, y: np.ndarray) -> np.ndarray:
-        self.fit(X, y)
-        return self.transform(X, y)
+    def _split_covariates_y(self, X: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
+        # Split into covariates and behavioral targets.
+        # Keep covariates as a dataframe bc will use names later, but cast targets to ndarray.
+        covariates = X.loc[:, HCP_COVARIATE_COLUMNS]
+        y = check_array(X.loc[:, HCP_BEHAV_COLUMNS])
+        return covariates, y
+
+    def _get_target_indices_weight(self) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Get the column indices and average weights for the selected target."""
+        if self.target_name is None:
+            ind, weight = None, None
+        elif self.target_name in HCP_BEHAV_COLUMNS_MAP:
+            ind = np.array([HCP_BEHAV_COLUMNS_MAP[self.target_name]])
+            weight = None
+        else:
+            hcp_factors_topk = _cache_load_hcp_behav_factors_topk()
+            assert self.target_name in hcp_factors_topk, (
+                f"Invalid target name {self.target_name}"
+            )
+
+            weight = np.array(hcp_factors_topk[self.target_name])
+            (ind,) = weight.nonzero()
+            weight = weight[ind]
+        return ind, weight
