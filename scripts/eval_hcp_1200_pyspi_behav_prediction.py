@@ -61,9 +61,9 @@ MIN_VALID_SUB_FRACTION = 0.9
 
 def main(
     spi: str = "cov_EmpiricalCovariance",
+    target: str = "Cognition",
     parc_size: int = 200,
     pool: int = 3,
-    target: str = "Cognition",
     n_splits: int = 20,
     perm_test: bool = False,
     seed: int = 2142,
@@ -71,9 +71,9 @@ def main(
 ):
     params = {
         "spi": spi,
+        "target": target,
         "parc_size": parc_size,
         "pool": pool,
-        "target": target,
         "n_splits": n_splits,
         "perm_test": perm_test,
         "seed": seed,
@@ -101,10 +101,14 @@ def main(
 
     out_dir = (
         out_dir
-        / f"parc-{parc_size}__pool-{pool}__perm-{int(perm_test)}__seed-{seed}"
+        / f"parc-{parc_size}__pool-{pool}__n-{n_splits}__perm-{int(perm_test)}__seed-{seed}"
         / f"{spi_id:03d}__spi-{spi}"
         / f"target-{target}"
     )
+
+    if out_dir.exists():
+        logging.info("Output already exists; exiting.")
+        return
 
     out_dir.mkdir(exist_ok=True, parents=True)
 
@@ -163,9 +167,6 @@ def main(
 
     for split, (train_ind, test_ind) in enumerate(splitter.split(X, groups=groups)):
         state_path = out_dir / f"split-{split}__state.pkl"
-        if state_path.exists():
-            logging.info(f"State already exists for split={split}; skipping.")
-            continue
 
         # Initialize model. Note we do this inside the loop rather than just once in order
         # to sample a new CV seed each time. No other reason really. Technically we
@@ -217,9 +218,6 @@ def main(
 
         corr_train = arfcexp.prediction.corr_score(targets_train, preds_train)
         corr_test = arfcexp.prediction.corr_score(targets_test, preds_test)
-
-        if alpha in {ALPHAS[0], ALPHAS[-1]}:
-            logging.warning(f"Optimal alpha {alpha} on the grid boundary.")
 
         result = {
             **params,
