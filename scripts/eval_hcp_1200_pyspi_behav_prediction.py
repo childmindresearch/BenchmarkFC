@@ -175,7 +175,6 @@ def main(
             arfcexp.prediction.TargetTransformEstimator(
                 KernelRidge(kernel="precomputed"),
                 arfcexp.transforms.HCPBehavTargetTransform(target_name=target),
-                scoring="neg_mean_squared_error",
             ),
             param_grid={"estimator__alpha": ALPHAS},
             cv=GroupKFold(
@@ -209,12 +208,12 @@ def main(
         preds_train = best_model.predict(X_train)
         preds_test = best_model.predict(X_test)
 
-        mse_train = mean_squared_error(targets_train, preds_train)
-        mse_test = mean_squared_error(targets_test, preds_test)
-        mse_val = -model.best_score_
-
         r2_train = r2_score(targets_train, preds_train)
         r2_test = r2_score(targets_test, preds_test)
+        r2_val = model.best_score_
+
+        mse_train = mean_squared_error(targets_train, preds_train)
+        mse_test = mean_squared_error(targets_test, preds_test)
 
         corr_train = arfcexp.prediction.corr_score(targets_train, preds_train)
         corr_test = arfcexp.prediction.corr_score(targets_test, preds_test)
@@ -228,11 +227,11 @@ def main(
             "n_train": len(X_train),
             "n_test": len(X_test),
             "alpha": alpha,
-            "mse_train": mse_train,
-            "mse_val": mse_val,
-            "mse_test": mse_test,
             "r2_train": r2_train,
+            "r2_val": r2_val,
             "r2_test": r2_test,
+            "mse_train": mse_train,
+            "mse_test": mse_test,
             "corr_train": corr_train,
             "corr_test": corr_test,
         }
