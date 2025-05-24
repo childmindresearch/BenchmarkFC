@@ -79,6 +79,14 @@ eval_hcp_1200_pyspi_behav_prediction_all_targets_cov:
     -o logs/eval_hcp_1200_pyspi_behav_prediction_all_targets_cov/slurm-%A_%a.out \
     scripts/eval_hcp_1200_pyspi_behav_prediction_all_targets_cov.sh
 
+# Permutation test to get empirical null distribution.
+# Using empirical covariance and 4 factors.
+eval_hcp_1200_pyspi_behav_prediction_perm_test:
+    mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction_perm_test 2>/dev/null
+    sbatch \
+    -o logs/eval_hcp_1200_pyspi_behav_prediction_perm_test/slurm-%A_%a.out \
+    scripts/eval_hcp_1200_pyspi_behav_prediction_perm_test.sh
+
 # FC - behavioral prediction predicting 4 factor-based average measures, independently
 # using each of the 142 PySPI SPIs as features.
 eval_hcp_1200_pyspi_behav_prediction_factor_full:
