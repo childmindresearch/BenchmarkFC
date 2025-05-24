@@ -4,7 +4,9 @@
 #SBATCH --partition=RM-shared
 #SBATCH --ntasks=4
 #SBATCH --array=0-567
-#SBATCH --time=02:00:00
+#SBATCH --time=00:30:00
+
+# Prediction of 4 factor targets using all SPIs.
 
 set -e
 
@@ -24,10 +26,11 @@ spi_idx=$(( SLURM_ARRAY_TASK_ID % num_spis))
 
 spi=${spi_list[spi_idx]}
 target=${targets[target_idx]}
-echo $spi $target
 
 seed="2142"
 out_dir="results/hcp_1200_pyspi_behav_prediction_factor_full"
+
+echo $spi $target
 
 uv run --no-sync python scripts/eval_hcp_1200_pyspi_behav_prediction.py \
     --spi ${spi} --target ${target} --seed ${seed} --out-dir ${out_dir}

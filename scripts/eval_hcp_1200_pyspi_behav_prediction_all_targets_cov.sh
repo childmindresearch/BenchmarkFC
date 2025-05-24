@@ -4,7 +4,7 @@
 #SBATCH --partition=RM-shared
 #SBATCH --ntasks=4
 #SBATCH --array=0-58
-#SBATCH --time=02:00:00
+#SBATCH --time=00:30:00
 
 # Prediction of all 55 targets + 4 factors using empirical covariance.
 # Goal is to get a baseline of prediction for each target.
