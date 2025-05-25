@@ -3,7 +3,7 @@
 #SBATCH --job-name=test_profile_pyspi
 #SBATCH --partition=RM-shared
 #SBATCH --ntasks=4
-#SBATCH --array=0-246
+#SBATCH --array=0-254
 #SBATCH --time=04:00:00
 
 set -ex
@@ -17,7 +17,7 @@ set +a
 
 export OMP_NUM_THREADS=2
 
-spi_list=( $(cat "resources/spi_lists/spi_list_distinct_247.txt") )
+spi_list=( $(cat "resources/spi_lists/spi_list_distinct_255.txt") )
 spi=${spi_list[SLURM_ARRAY_TASK_ID]}
 
 sub="181131"

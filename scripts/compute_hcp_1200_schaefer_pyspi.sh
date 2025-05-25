@@ -15,7 +15,7 @@ set +a
 
 export OMP_NUM_THREADS=2
 
-spi_list_path="resources/spi_lists/spi_list_select_300s_142.txt"
+spi_list_path="resources/spi_lists/spi_list_select_300s_149.txt"
 sub_list_path="resources/subject_lists/hcp_complete_data_867_subject_list.txt"
 
 subs_per_batch=175

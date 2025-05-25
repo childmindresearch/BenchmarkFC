@@ -32,12 +32,12 @@ def main():
     with (outdir / f"spi_list_all_{len(all_spis)}.txt").open("w") as f:
         print("\n".join(all_spis), file=f)
 
-    # Exclude squared and precision SPIs which are redundant and can be easily computed
-    # after the fact.
+    # Exclude squared SPIs which are redundant and can be easily computed after the
+    # fact.
     distinct_spis = []
     for spi in all_spis:
         identifier = spi.split("_")[0]
-        if not (identifier.startswith("prec") or identifier.endswith("-sq")):
+        if not identifier.endswith("-sq"):
             distinct_spis.append(spi)
 
     logging.info(f"Found {len(distinct_spis)}/{len(all_spis)} distinct SPIs.")
