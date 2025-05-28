@@ -605,3 +605,19 @@ np.allclose(ols_1.coef_[:5], ols_3.coef_)   # True
 ```
 
 Worth it, the new implementation is more than 10x faster.
+
+## 2025-05-23
+
+Ran all behavioral prediction slurm jobs. Working on analysis notebook.
+
+## 2025-05-24
+
+Finished analysis notebook. Results as expected.
+
+- Only cognition related measures are very reliably predicted.
+- None of the SPIs significantly outperform pearson baseline. Many significantly worse, or no better than chance. The rest are indistinguishable.
+
+
+## 2025-05-25
+
+Decided to add precision SPIs back in, since they are most related to sparse autoregressive SPIs, and they show some differences in pattern in Zhen-Qi's paper.
