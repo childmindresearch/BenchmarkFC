@@ -1,20 +1,34 @@
-
+# Download cifti format fsLR 32k 7 network Schaefer parcellations from Yeo Lab
+# repository.
 download_schaefer:
     bash scripts/download_schaefer_parcellations.sh
 
+# Download HCP-1200 preprocessed fsLR 32k resting state data and motion parameters from
+# the hcp-openaccess S3 bucket.
 download_hcp_1200:
     mkdir -p logs/download_hcp_1200 2>/dev/null
     sbatch -o logs/download_hcp_1200/slurm-%j.out scripts/download_hcp_1200.sh
 
+# Download other misc resource files
+# - HCP subject lists
+# - HCP behavioral column lists
+# - HCP phenotypic data lookup table
 download_misc_files:
     bash scripts/download_misc_files.sh
 
+# Compute framewise displacement (FD), mean FD, and motion spikes using motion parameter
+# data from HCP. Follows procedure from Li et al., 2019.
 compute_hcp_1200_rfmri_fd:
     uv run python scripts/compute_hcp_1200_rfmri_fd.py
 
+# Motion analysis and filtering.
+# - Compute subject and volume level FD thresholds.
+# - Plot histograms of motion data.
 analyze_hcp_1200_rfmri_fd:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_rfmri_fd.ipynb
 
+# Generate final HCP subject list, including subjects with complete behavioral and
+# resting data after motion filtering.
 filter_hcp_1200_subjects:
     uv run jupyter execute --inplace notebooks/filter_hcp_1200_subjects.ipynb
 
@@ -60,6 +74,13 @@ compute_hcp_1200_schaefer_pyspi:
     -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%A_%a.out \
     scripts/compute_hcp_1200_schaefer_pyspi.sh
 
+# Fill in any missing/retry SPIs as needed.
+compute_hcp_1200_schaefer_pyspi_subset:
+    mkdir -p logs/compute_hcp_1200_schaefer_pyspi 2>/dev/null
+    sbatch \
+    -o logs/compute_hcp_1200_schaefer_pyspi/slurm-%j.out \
+    scripts/compute_hcp_1200_schaefer_pyspi_subset.sh
+
 # Remove behavioral measures from the original list of 58 that have insufficient
 # variance across subjects.
 filter_hcp_1200_behav_measures:
@@ -88,7 +109,7 @@ eval_hcp_1200_pyspi_behav_prediction_perm_test:
     scripts/eval_hcp_1200_pyspi_behav_prediction_perm_test.sh
 
 # FC - behavioral prediction predicting 4 factor-based average measures, independently
-# using each of the 142 PySPI SPIs as features.
+# using each of the PySPI SPIs as features.
 eval_hcp_1200_pyspi_behav_prediction_factor_full:
     mkdir -p logs/eval_hcp_1200_pyspi_behav_prediction_factor_full 2>/dev/null
     sbatch \

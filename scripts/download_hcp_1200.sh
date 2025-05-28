@@ -5,6 +5,9 @@
 #SBATCH --ntasks=8
 #SBATCH --time=1-00:00:00
 
+# Download HCP-1200 preprocessed fsLR 32k resting state data and motion parameters from
+# the hcp-openaccess S3 bucket.
+
 set -ex
 
 # export all environment variables

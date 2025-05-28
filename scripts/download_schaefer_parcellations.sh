@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Download cifti format fsLR 32k 7 network Schaefer parcellations from Yeo Lab
+# repository.
+
 set -ex
 
 resolutions="200 300 400 500 800 1000"
