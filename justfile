@@ -119,3 +119,13 @@ eval_hcp_1200_pyspi_behav_prediction_factor_full:
 # Analysis and figures of PySPI behavioral prediction results.
 analyze_hcp_1200_pyspi_behav_prediction:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_pyspi_behav_prediction.ipynb
+
+test_profile_skarf:
+    mkdir -p logs/test_profile_skarf 2>/dev/null
+    sbatch -o logs/test_profile_skarf/slurm-%A_%a.out scripts/test_profile_skarf.sh
+
+compute_hcp_1200_schaefer_skarf:
+    mkdir -p logs/compute_hcp_1200_schaefer_skarf 2>/dev/null
+    sbatch \
+    -o logs/compute_hcp_1200_schaefer_skarf/slurm-%j.out \
+    scripts/compute_hcp_1200_schaefer_skarf.sh

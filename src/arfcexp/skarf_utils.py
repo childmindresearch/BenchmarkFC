@@ -110,3 +110,11 @@ def _with_routing(var: LinearVAR) -> LinearVAR:
         .set_fit_request(groups=False)
         .set_score_request(segments=True)
     )
+
+
+def get_skarf_coef(model: BaseVAR | GridSearchCV) -> np.ndarray:
+    if isinstance(model, GridSearchCV):
+        coef = model.best_estimator_.coef_
+    else:
+        coef = model.coef_
+    return coef
