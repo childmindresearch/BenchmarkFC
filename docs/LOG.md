@@ -621,3 +621,40 @@ Finished analysis notebook. Results as expected.
 ## 2025-05-25
 
 Decided to add precision SPIs back in, since they are most related to sparse autoregressive SPIs, and they show some differences in pattern in Zhen-Qi's paper.
+
+## 2025-05-28
+
+Precision estimators perform similarly to covariance in terms of behavioral prediction, although some maybe marginally worse.
+
+Writing documentation:
+
+- README.md
+- Comments in the justfile
+- Rough methods writeup in `docs/METHODS.md`
+
+Finalized initial list of skarf functions to evaluate (a long time to wait for this, I know 😅).
+
+- cov_empirical
+- cov_graphicallasso
+- prec_empirical
+- prec_graphicallasso
+- linear_ols
+- linear_ridge
+- linear_lasso
+- linear_enet
+- linear_lasso-pos
+- linear_enet-pos
+- linear_pls
+- linear_pca-ridge
+
+We have two each for six categories: covariance, precision, least-squares (ols and ridge), sparse linear, positive, factorized
+
+I wanted to include `GraphicalLassoCV` especially since it explicitly aims to estimate the graph, and is therefore a close comparison (Varoquax et al., 2010).
+
+Implemented script to compute these matrices for HCP. Also included a VAR evaluation with train/val/test splits where train = same run, val = same session, test = across session.
+
+Launched the job for lags 0, 1.
+
+## 2024-05-29
+
+Added script for evaluating behavioral prediction for the skarf matrices. Considered generalizing the previous script for pyspi, but decided rather to move the shareable pieces to a module, and copy and edit. Less coupling and less complexity I think.

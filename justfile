@@ -32,18 +32,26 @@ analyze_hcp_1200_rfmri_fd:
 filter_hcp_1200_subjects:
     uv run jupyter execute --inplace notebooks/filter_hcp_1200_subjects.ipynb
 
+# Generate videos of raw HCP data. Not strictly a necessary step, but useful for getting
+# a sense of the data.
 visualize_raw_hcp_timeseries:
     uv run jupyter execute --inplace notebooks/visualize_raw_hcp_timeseries.ipynb
 
+# Visually check the impact of different timeseries preprocessing steps on synthetic
+# time series data.
 test_synthetic_timeseries_preprocessing:
     uv run jupyter execute --inplace notebooks/test_synthetic_timeseries_preprocessing.ipynb
 
+# Similar check of timeseries preprocessing, but for actual HCP data.
 test_hcp_timeseries_preprocessing:
     uv run jupyter execute --inplace notebooks/test_hcp_timeseries_preprocessing.ipynb
 
+# Closer inspection of the effect of padding type on boundary effects introduced by
+# bandpass filtering.
 test_hcp_timeseries_filtering:
     uv run jupyter execute --inplace notebooks/test_hcp_timeseries_filtering.ipynb
 
+# Extract preprocessed parcellated HCP time series from cifti space 32k fsLR data.
 extract_hcp_schaefer_timeseries:
     mkdir -p logs/extract_hcp_schaefer_timeseries 2>/dev/null
     sbatch \
@@ -55,19 +63,29 @@ extract_hcp_schaefer_timeseries:
     --output logs/extract_hcp_schaefer_timeseries/slurm-%j.out \
     scripts/extract_hcp_schaefer_timeseries.py
 
+# Visualize final preprocessed parcellated HCP time series.
 visualize_parcellated_hcp_timeseries:
     uv run jupyter execute --inplace notebooks/visualize_parcellated_hcp_timeseries.ipynb
 
+# Loading the PySPI SPIs requires importing a lot of modules. Here we just do it once
+# and reused the cached JSON of SPI configs. Expected to generate a complete list of 284
+# SPIs in resources/spi_lists.
 export_spi_configs:
     uv run python scripts/export_spi_configs.py
 
+# Run all SPIs on a single example subject with a generous time constraint.
 test_profile_pyspi:
     mkdir -p logs/test_profile_pyspi 2>/dev/null
     sbatch -o logs/test_profile_pyspi/slurm-%A_%a.out scripts/test_profile_pyspi.sh
 
+# Analyze PySPI SPI test results, plot run time and memory usage, and filter SPIs for
+# errors and long run time. Expected to produce a list of selected SPIs in
+# resources/spi_lists.
 analyze_test_profile_pyspi:
     uv run jupyter execute --inplace notebooks/analyze_test_profile_pyspi.ipynb
 
+# Compute selected PySPI SPI matrices on all of HCP 1200.
+# NOTE: long-running large slurm job.
 compute_hcp_1200_schaefer_pyspi:
     mkdir -p logs/compute_hcp_1200_schaefer_pyspi 2>/dev/null
     sbatch \
@@ -120,12 +138,23 @@ eval_hcp_1200_pyspi_behav_prediction_factor_full:
 analyze_hcp_1200_pyspi_behav_prediction:
     uv run jupyter execute --inplace notebooks/analyze_hcp_1200_pyspi_behav_prediction.ipynb
 
+# Test that skarf functions run without error, meet runtime cutoff, and produce sensible
+# results.
 test_profile_skarf:
     mkdir -p logs/test_profile_skarf 2>/dev/null
     sbatch -o logs/test_profile_skarf/slurm-%A_%a.out scripts/test_profile_skarf.sh
 
+# Comute skarf matrices for all of HCP 1200.
 compute_hcp_1200_schaefer_skarf:
     mkdir -p logs/compute_hcp_1200_schaefer_skarf 2>/dev/null
     sbatch \
     -o logs/compute_hcp_1200_schaefer_skarf/slurm-%j.out \
     scripts/compute_hcp_1200_schaefer_skarf.sh
+
+# FC - behavioral prediction predicting 4 factor-based average measures, independently
+# using 12 skarf funcs. Same as previous eval for pyspi.
+eval_hcp_1200_skarf_behav_prediction_factor_full:
+    mkdir -p logs/eval_hcp_1200_skarf_behav_prediction_factor_full 2>/dev/null
+    sbatch \
+    -o logs/eval_hcp_1200_skarf_behav_prediction_factor_full/slurm-%A_%a.out \
+    scripts/eval_hcp_1200_skarf_behav_prediction_factor_full.sh
