@@ -26,6 +26,7 @@ import arfcexp.hcp
 import arfcexp.prediction
 import arfcexp.transforms
 from arfcexp.matrices import compute_pearson_kernel, load_avg_mats
+from arfcexp.skarf_utils import AVAILABLE_SKARF_FUNCS
 
 logging.basicConfig(
     format="[%(levelname)s %(asctime)s]: %(message)s",
@@ -59,49 +60,49 @@ MIN_VALID_SUB_FRACTION = 0.9
 
 
 def main(
-    spi: str = "cov_EmpiricalCovariance",
+    func: str = "cov_empirical",
     target: str = "Cognition",
     parc_size: int = 200,
     pool: int = 3,
+    lag: int = 0,
+    order: int = 1,
     n_splits: int = 20,
     perm_test: bool = False,
     seed: int = 2142,
     out_dir: str | None = None,
 ):
     params = {
-        "spi": spi,
+        "func": func,
         "target": target,
         "parc_size": parc_size,
         "pool": pool,
+        "lag": lag,
+        "order": order,
         "n_splits": n_splits,
         "perm_test": perm_test,
         "seed": seed,
     }
 
     logging.info(
-        "Testing HCP pyspi behavioral prediction:\n\t"
+        "Testing HCP skarf behavioral prediction:\n\t"
         + "\n\t".join(f"{k}={v}" for k, v in params.items())
     )
 
     project_root = Path(os.environ["PROJECT_ROOT"])
     random_state = check_random_state(seed)
 
-    # Look up SPI and subject index IDs.
-    spi_list_dir = project_root / "resources/spi_lists"
-    spi_list = (spi_list_dir / "spi_list_all_284.txt").read_text().strip().split()
-    spi_id_map = {spi: ii for ii, spi in enumerate(spi_list)}
-    spi_id = spi_id_map[spi]
+    func_id = AVAILABLE_SKARF_FUNCS.index(func)
 
     if out_dir is None:
-        out_dir = project_root / "results/hcp_1200_pyspi_behav_prediction"
+        out_dir = project_root / "results/hcp_1200_skarf_behav_prediction"
     else:
         out_dir = Path(out_dir)
     out_dir: Path
 
     out_dir = (
         out_dir
-        / f"parc-{parc_size}__pool-{pool}__n-{n_splits}__perm-{int(perm_test)}__seed-{seed}"
-        / f"{spi_id:03d}__spi-{spi}"
+        / f"parc-{parc_size}__pool-{pool}__lag-{lag}__order-{order}__n-{n_splits}__perm-{int(perm_test)}__seed-{seed}"
+        / f"{func_id:03d}__func-{func}"
         / f"target-{target}"
     )
 
@@ -115,15 +116,15 @@ def main(
     with (out_dir / "params.yaml").open("w") as f:
         yaml.safe_dump(params, f, sort_keys=False)
 
-    logging.info(f"Loading matrices for {spi=}.")
+    logging.info(f"Loading matrices for {func=}.")
     mats_dir = (
         project_root
-        / "data/hcp_1200_rfmri_schaefer_pyspi"
-        / f"parc-{parc_size}__pool-{pool}"
-        / f"{spi_id:03d}__spi-{spi}"
+        / "data/hcp_1200_rfmri_schaefer_skarf"
+        / f"parc-{parc_size}__pool-{pool}__lag-{lag}__order-{order}"
+        / f"{func_id:03d}__func-{func}"
     )
     if not mats_dir.exists():
-        logging.warning(f"SPI matrices dir {mats_dir} does not exist; exiting.")
+        logging.warning(f"Skarf matrices dir {mats_dir} does not exist; exiting.")
         return 1
 
     sub_list = arfcexp.hcp.load_hcp_subject_list()
@@ -133,7 +134,7 @@ def main(
     # Count number of runs per subject.
     run_counts = avg_mats_df["Count"].value_counts().to_dict()
     valid_sub_fraction = (avg_mats_df["Count"] > 0).mean()
-    logging.info(f"Run counts for {spi=}:\n{run_counts}")
+    logging.info(f"Run counts for {func=}:\n{run_counts}")
 
     if valid_sub_fraction < MIN_VALID_SUB_FRACTION:
         logging.warning("Not enough subjects with data; exiting.")
