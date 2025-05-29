@@ -25,3 +25,4 @@ data/
 logs/
 results/
 resources/schaefer_parcellations
+tmp/
