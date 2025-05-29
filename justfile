@@ -158,3 +158,7 @@ eval_hcp_1200_skarf_behav_prediction_factor_full:
     sbatch \
     -o logs/eval_hcp_1200_skarf_behav_prediction_factor_full/slurm-%A_%a.out \
     scripts/eval_hcp_1200_skarf_behav_prediction_factor_full.sh
+
+# Analysis and figures of skarf behavioral prediction results.
+analyze_hcp_1200_skarf_behav_prediction:
+    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_skarf_behav_prediction.ipynb
