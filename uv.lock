@@ -122,6 +122,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
+    { name = "brainspace" },
     { name = "datasets" },
     { name = "fire" },
     { name = "ipython" },
@@ -151,6 +152,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = "==14.2.0" },
+    { name = "brainspace", specifier = ">=0.1.20" },
     { name = "datasets", specifier = "==3.4.0" },
     { name = "fire", specifier = "==0.7.0" },
     { name = "ipython" },
@@ -325,6 +327,25 @@ wheels = [
 [package.optional-dependencies]
 css = [
     { name = "tinycss2" },
+]
+
+[[package]]
+name = "brainspace"
+version = "0.1.20"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "nibabel" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "vtk" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/eb/59/e01bc9bb5a2b354d3b162b57f29b62e1294a93daabb0fb6113620864554b/brainspace-0.1.20.tar.gz", hash = "sha256:57c40ec747dbc3ddd2098e0dbb868b033e8c3ec64f1dab9862f653426df9df4e", size = 60429542 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/ff/e25022b8e912441972a13de0d051b9cd687932f6410fb4e17c82e834996a/brainspace-0.1.20-py3-none-any.whl", hash = "sha256:ea8c7a2f8c23e12f05c36fd1ba7db77bd35ca438cb286122c3b3920dc9be3efe", size = 60685985 },
 ]
 
 [[package]]
