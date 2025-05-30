@@ -1,11 +1,19 @@
 # TODO
 
+## Autoregressive prediction evaluation
+
+The skarf estimators are optimized for autoregressive time series prediction. Which estimator predicts the time series the best? Is time series prediction correlated with behavioral trait prediction.
+
+The autoregressive prediction scores are already computed as part of skarf estimation. There are three scores: "train" (within-run), "val" (within-session), "test" (across-session). For consistent comparison with the behavioral prediction analyses, we can compute average scores for 20 random test splits of subjects, and plot similarly. (See [`eval_hcp_1200_skarf_behav_prediction.py`](../scripts/eval_hcp_1200_skarf_behav_prediction.py) for how to generate the splits.)
+
 ## Test-retest reliability
 
 Evaluate the test-retest reliability of the PySPI and Skarf matrices. Possible test-retest reliability measures we could use are:
 
 - intra-class correlation (ICC) ([`icc.py`](../src/arfcexp/icc.py)).
 - subject identifiability index (Tian2021).
+
+Again, for consistent evaluation, average reliability scores can be computed over 20 random test splits of subjects.
 
 ## Graph metrics
 

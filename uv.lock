@@ -152,7 +152,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = "==14.2.0" },
-    { name = "brainspace", specifier = ">=0.1.20" },
+    { name = "brainspace", specifier = "==0.1.20" },
     { name = "datasets", specifier = "==3.4.0" },
     { name = "fire", specifier = "==0.7.0" },
     { name = "ipython" },
