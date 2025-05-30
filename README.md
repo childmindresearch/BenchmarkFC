@@ -21,7 +21,7 @@ The entrypoint for the project, i.e. first file to look at, is the [`justfile`](
 - `justfile`: list of steps for reproducing the analyses, to be used with [`just`](https://github.com/casey/just). Can be also used as a table of contents for the project.
 - `docs/`: project documentation
   - [`LOG.md`](docs/LOG.md): log of daily steps
-  - [`METHODS.md`](docs/METHODS.md): writeup of methods
+  - [`METHODS.md`](docs/METHODS.md): (partial) writeup of methods
   - [`TODO.md`](docs/TODO.md): possible next steps
 - `data/`: input and intermediate preprocessed data
 - `results/`: output results and figures

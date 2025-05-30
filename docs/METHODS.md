@@ -89,5 +89,12 @@ Figures:
 
 HCP cifti-space 32k minimally preprocessed time series data were post-processed following prior works, e.g. (Li et al., 2019; Kong et al., 2023). Specific steps were standard scaling to mean zero unit variance, bandpass filtering (0.009 < f < 0.08) with even padding to reduce edge artifacts, global signal regression (GSR) including both the mean signal and temporal derivative, and ROI time series averaging using the Schaefer 2018 parcellation. Unlike previous works, we did not interpolate over high motion frames, since the original HCP preprocessed data are already denoised, and we found that the interpolation introduces new artifacts. Time series post-processing was implemented using `nilearn.signal.clean`.
 
-
 ### PySPI SPI selection
+
+Commands:
+
+- `export_spi_configs`
+- `test_profile_pyspi`
+- `analyze_test_profile_pyspi`
+
+The initial pool of PySPI SPIs included all 284 SPIs available in PySPI v1.1.1. We first excluded all squared SPI variants, since these are redundant with other SPIs. We then excluded all SPIs that took longer than 5 minutes to run on a sample subject's data. The 5 minute threshold was selected by applying an inflexion point (i.e. knee point) cutoff to the sorted SPI run times.
