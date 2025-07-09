@@ -44,6 +44,8 @@ The entrypoint for the project, i.e. first file to look at, is the [`justfile`](
 
 ```sh
 git clone git@github.com:childmindresearch/skarf-experiments.git
+cd skarf-experiments
+git submodule init && git submodule update
 ```
 
 2. Install the environment with [`uv`](https://docs.astral.sh/uv/)
