@@ -82,7 +82,7 @@ test_profile_pyspi:
 # errors and long run time. Expected to produce a list of selected SPIs in
 # resources/spi_lists.
 analyze_test_profile_pyspi:
-    uv run jupyter execute --inplace notebooks/analyze_test_profile_pyspi.ipynb
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_test_profile_pyspi.ipynb
 
 # Compute selected PySPI SPI matrices on all of HCP 1200.
 # NOTE: long-running large slurm job.
@@ -108,7 +108,7 @@ filter_hcp_1200_behav_measures:
 # - Visualize raw and cleaned histograms for each measure.
 # - Compute population-wide factors and visualize.
 analyze_hcp_1200_behav:
-    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_behav.ipynb
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_behav.ipynb
 
 # Baseline FC - behavioral prediction predicting 55 targets + 4 factors using only
 # empirical covariance.
@@ -136,7 +136,7 @@ eval_hcp_1200_pyspi_behav_prediction_factor_full:
 
 # Analysis and figures of PySPI behavioral prediction results.
 analyze_hcp_1200_pyspi_behav_prediction:
-    uv run jupyter execute --inplace notebooks/analyze_hcp_1200_pyspi_behav_prediction.ipynb
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_pyspi_behav_prediction.ipynb
 
 # Test that skarf functions run without error, meet runtime cutoff, and produce sensible
 # results.

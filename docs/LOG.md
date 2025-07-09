@@ -655,6 +655,18 @@ Implemented script to compute these matrices for HCP. Also included a VAR evalua
 
 Launched the job for lags 0, 1.
 
-## 2024-05-29
+## 2025-05-29
 
 Added script for evaluating behavioral prediction for the skarf matrices. Considered generalizing the previous script for pyspi, but decided rather to move the shareable pieces to a module, and copy and edit. Less coupling and less complexity I think.
+
+
+## 2025-07-09
+
+GK's first entry! Documenting my notes of the install and setup process so far.
+- I downloaded all of the data from ACCESS so I can jump around without explicitly running each step.
+- I updated the `README.md` to add submodule initialization so make the install work smoothly.
+- This is the first time I may actually _like_ `uv`, which is cool... It works nicely when there are instructions for how to use it :) It felt a tad arcane to me since none of the subcommands are particularly intuitive, but `sync` worked properly ha.
+- First line I jumped to for running with `just`, which also seems great, is `analyze_test_profile_pyspi`. This crashed beacuse of not having an `MPL_STYLE` environment variable set... In places where this comes up, we should edit the code to point to the relative path of connor's style-file or add an env var in the justfile (I did the latter this time). His seems to be here: `./resources/clane.mplstyle`.
+- I also updated the `.env` file to point to my local directory path, rather than relying on the system location on ACCESS (left original location in comments). Interestingly, it seems that relative paths didn't work?
+- **Question** For `analyze_test_profile_pyspi` I don't quite see where we subselected the metrics for plotting?
+- Up to `analyze_hcp_1200_pyspi_behav_prediction` so far...
