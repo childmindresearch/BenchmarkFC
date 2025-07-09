@@ -669,4 +669,9 @@ GK's first entry! Documenting my notes of the install and setup process so far.
 - First line I jumped to for running with `just`, which also seems great, is `analyze_test_profile_pyspi`. This crashed beacuse of not having an `MPL_STYLE` environment variable set... In places where this comes up, we should edit the code to point to the relative path of connor's style-file or add an env var in the justfile (I did the latter this time). His seems to be here: `./resources/clane.mplstyle`.
 - I also updated the `.env` file to point to my local directory path, rather than relying on the system location on ACCESS (left original location in comments). Interestingly, it seems that relative paths didn't work?
 - **Question** For `analyze_test_profile_pyspi` I don't quite see where we subselected the metrics for plotting?
-- Up to `analyze_hcp_1200_pyspi_behav_prediction` so far...
+- **Question**: For `analyze_hcp_1200_pyspi_behav_prediction`, In cell 27 and beyond, what is the "baseline" that we are comparing to? Empirical cov performance for cognition factor? And all other prediction is just against that same factor?
+- Gone through all the analysis and it makes sense; need to now get an analyst up to speed on this so we can outline the focus of the paper and identify the other analyses that we want to perform. In particular, the purpose is benchmarking the skarf-class of methods against pyspi metrics, and so we want the following:
+  - [x] behavioral prediction
+  - [ ] information efficiency/sparsity
+  - [ ] behavioral prediction with imposed sparsity for pyspi (to match sparsity of skarf)
+  - [ ] reliability across sessions, scan durations
