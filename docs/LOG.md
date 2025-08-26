@@ -675,3 +675,34 @@ GK's first entry! Documenting my notes of the install and setup process so far.
   - [ ] information efficiency/sparsity
   - [ ] behavioral prediction with imposed sparsity for pyspi (to match sparsity of skarf)
   - [ ] reliability across sessions, scan durations
+
+
+## 2025-08-26
+_JK's first entry!_
+
+- Wanted to combine all of the output arrow files into a singular parquet table that should in theory be easier for someone unfamiliar with the dataset to work with. There are some memory issues if loading all of the data in at once and just using `.to_table()`, similar as to what was being used in one of the existing scripts. Was able to get around this via batch processing:
+  ```python
+  from pathlib import Path
+  import pyarrow as pa
+  import pyarrow.parquet as pq
+  
+  method = "skarf"
+  dpath = Path(f"./data/hcp_1200_rfmri_schaefer_{method}")
+  
+  writer = None
+  for fpath in sorted(dpath.rglob("*.arrow")):
+      with fpath.open('rb') as f:
+          reader = pa.ipc.RecordBatchFileReader(f)
+          for i in range(reader.num_record_batches):
+              batch = reader.get_batch(i)
+              table = pa.Table.from_batches([batch])
+              if writer is None:
+                  writer = pq.ParquetWriter(f'hcp_1200_rfmri_schaefer_{method}.parquet', table.schema, compression='zstd')
+              writer.write_table(table)
+  
+  if writer:
+      writer.close()
+  ```
+- Memory is very likely still an issue in reading these single tables back directly, but have been able to get around this so far by using [Polars]([url](http://pola.rs/)) to read the parquet tables back in via `polars.scan_parquet`, which loads the table as a `LazyFrame` instead of eagerly loading the data as a `DataFrame`.
+  - Allows for the table to be filtered down before performing any operations on it. Noting that filtering operations performed on the `LazyFrame` can feel sluggish initially - which is more noticable because data starts to be read into memory at this stage (instead of initial loading with `DataFrame`s)
+  - Including the Polars' `LazyFrame` [reference](https://docs.pola.rs/api/python/stable/reference/lazyframe/index.html) for ease of finding later on.
