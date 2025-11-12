@@ -706,3 +706,42 @@ _JK's first entry!_
 - Memory is very likely still an issue in reading these single tables back directly, but have been able to get around this so far by using [Polars]([url](http://pola.rs/)) to read the parquet tables back in via `polars.scan_parquet`, which loads the table as a `LazyFrame` instead of eagerly loading the data as a `DataFrame`.
   - Allows for the table to be filtered down before performing any operations on it. Noting that filtering operations performed on the `LazyFrame` can feel sluggish initially - which is more noticable because data starts to be read into memory at this stage (instead of initial loading with `DataFrame`s)
   - Including the Polars' `LazyFrame` [reference](https://docs.pola.rs/api/python/stable/reference/lazyframe/index.html) for ease of finding later on.
+
+## 2025-11-06
+_Alp's first entry!_ 
+
+> Writing this entry retrospectively a week later to properly document my initial explorations
+
+- First logged into **Arcana** to explore there. Cloned the repo to my user directory (this required setting up a GitHub SSH key on **Arcana** since the repo is private), initialized the submodules and `uv sync`ed to create a virtual environment with all dependencies installed. I've been using VSCode's SSH remote extension to work in clusters, I find it much easier to manage the workspace this way. What I usually do when I'm setting it up is that I add each folder that I'm working with to the workspace so that I can easily switch between them. In Arcana, it's my home directory + where the separate pyspi and skarf outputs live at `/srv/data/skarf` + the location of the aggregated data at `/srv/projects/skarf/`. Then I save the workspace to a file my home directory so that I can open this configuration easily next time.
+- Since `data`, `results`, and `logs` directories are gitignored, and the only data available on **Arcana** is the output of previous runs, I decided to switch to **ACCESS** to explore the data there first.
+- On **ACCESS**, I again cloned the repo to my home directory followed the same steps as above to initialize the submodules and create the virtual environment.
+  
+  > _Retrospective commentary_: At the `uv sync` step here, I remember running into a dependency issue that I was able to _very jankily_ overcome by creating a `python=3.11` conda environment first and running `uv sync` while that environment is active. But when I tried to replicate this now (a week later), it magically worked without the conda environment. Weird, but still wanted to take a note of this here just in case if this becomes an issue again.
+  
+  Then I added the project path `/ocean/projects/med220004p/clane2/ARFC/arfc-experiments` to my workspace and saved it. I also created symlinks to the `data` and `results` directories there from my home directory for easier access.
+
+- My goal at this point was to rerun **L115** of the `justfile` for the initial behavioral prediction using only `empirical covariance`, but only on the `Cognition` target, to see if I can reproduce the results in the `results` folder. For this, I changed the `env` file so that `PROJECT_ROOT` points to the cloned repo in my home directory, and added this command to the `justfile`:
+  
+  ```
+  test_eval_hcp_1200_pyspi_behav_prediction_cov:
+    mkdir -p logs_alp/test_eval_cov 2>/dev/null
+    uv run python scripts/eval_hcp_1200_pyspi_behav_prediction.py \
+        --spi cov_EmpiricalCovariance \
+        --target Cognition \
+        --seed 3293 \
+        --out-dir results_alp/test_behav_prediction
+  ```
+- The command successfully ran, and then I checked the results in the `results.json` file to see that all the calculated values are within `10^-7` of the original results (likely due to floating point precision differences). Overall, a successful first run!
+
+## 2025-11-12
+
+_Alp's #2_
+
+The goal this time was to compute the mean sparsity for each pyspi and skarf metric across all subjects, sessions, runs, and lags (for skarf ones). For this purpose:
+
+- I created a notebook on **Arcana** (a copy is at `/srv/projects/skarf/sparsity_computation/compute_mean_sparsity.ipynb`) to calculate and visualize the mean sparsity of connectivity matrices in the aggregated Parquet file at `/srv/projects/skarf/data_aggregation/hcp_1200_rfmri_schaefer.parquet`. I first explored the data, and saw that out of the 596532 rows, only 870 rows had failed runs. Also, the matrices were stored as flattened arrays of length 40000 (200 parcels).
+- First, I calculated sparsity as the ratio of elements that is equal to **zero** (added a threshold to handle floating point precision issues) with `np.sum(np.abs(mat) < 1e-10) / len(mat)`. I computed this for each row in the Parquet file, grouped by `method` and `function`, and then calculated the mean and std of sparsity for each group. Finally visualized them using horizontal bar plots.
+- Looking at the results, I realized that more than 95% of them had a sparsity of 0, so I talked with Jason and he suggested I could define multiple thresholds to get a better sense. So I modified the notebook to compute sparsity across thresholds of `[0.0, 0.05, 0.1, 0.3]` instead.
+- I used `joblib` for parallelization to speed things up. First tried using 12 cores for the `t=0.0` case, then used 23 when I added other three thresholds. Both runs successfully completed within a few minutes, but `DAIRmon` apparently threw a temperature warning for both runs. `¯\_(ツ)_/¯`
+- The results and plots are saved at `/srv/projects/skarf/sparsity_computation`. The inflection point in the plot seems to be at **0.8** for the `t=0.0` sparsity.
+- We went over the plots during the OHBM meeting, and decided that the next step is to impose **0.8** sparsity (retaining only the top 20% connections by thresholding at the 80th percentile for each matrix) on **all metrics** (both pyspi and skarf) and rerun the behavioral prediction analysis to see how they compare on the `Cognition` target with the imposed sparsity.
