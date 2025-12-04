@@ -162,3 +162,21 @@ eval_hcp_1200_skarf_behav_prediction_factor_full:
 # Analysis and figures of skarf behavioral prediction results.
 analyze_hcp_1200_skarf_behav_prediction:
     uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_skarf_behav_prediction.ipynb
+
+# Test sparse behavioral prediction on a small subset of subjects (50) to verify
+# functionality before running on full dataset. Tests 3 method/func combinations:
+# pyspi cov_EmpiricalCovariance, skarf cov_empirical, and skarf linear_lasso.
+test_sparse_behav_prediction:
+    bash scripts/test_sparse_behav_prediction.sh
+
+# FC - behavioral prediction with 0.8 sparsity imposed on all connectivity matrices
+# (both pyspi and skarf). Predicts Cognition target using all 161 method/func combinations
+# (149 pyspi + 12 skarf) with joblib parallel execution (6 jobs × 4 cores = 24 cores).
+eval_hcp_1200_sparse_behav_prediction_all:
+    mkdir -p logs/eval_hcp_1200_sparse_behav_prediction_all 2>/dev/null
+    set -a && . "$(pwd)/.env" && set +a && uv run python scripts/eval_hcp_1200_sparse_behav_prediction_parallel.py 2>&1 | tee logs/eval_hcp_1200_sparse_behav_prediction_all/run_$(date +%Y%m%d_%H%M%S).log
+
+# Analysis and figures comparing sparse vs non-sparse behavioral prediction results.
+# Analyzes results with 0.8 imposed sparsity on all methods (pyspi and skarf).
+analyze_hcp_1200_sparse_behav_prediction:
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb

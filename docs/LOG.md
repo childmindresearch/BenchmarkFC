@@ -745,3 +745,93 @@ The goal this time was to compute the mean sparsity for each pyspi and skarf met
 - I used `joblib` for parallelization to speed things up. First tried using 12 cores for the `t=0.0` case, then used 23 when I added other three thresholds. Both runs successfully completed within a few minutes, but `DAIRmon` apparently threw a temperature warning for both runs. `¯\_(ツ)_/¯`
 - The results and plots are saved at `/srv/projects/skarf/sparsity_computation`. The inflection point in the plot seems to be at **0.8** for the `t=0.0` sparsity.
 - We went over the plots during the OHBM meeting, and decided that the next step is to impose **0.8** sparsity (retaining only the top 20% connections by thresholding at the 80th percentile for each matrix) on **all metrics** (both pyspi and skarf) and rerun the behavioral prediction analysis to see how they compare on the `Cognition` target with the imposed sparsity.
+
+## 2025-11-25 to 2025-12-04
+
+_Alp's #3_
+
+Implemented sparse behavioral prediction pipeline to enable fair comparison between naturally sparse methods (skarf) and dense methods (pyspi). The goal was to impose 0.8 sparsity on all 161 metrics (149 pyspi + 12 skarf) by retaining only the top 20% of connections, then rerun behavioral prediction on the Cognition target.
+
+Created several new components:
+
+1. **Data loading utility** in `src/arfcexp/matrices.py`:
+   - Added `load_avg_mats_from_parquet()` function that uses polars for memory-efficient lazy loading from the aggregated parquet file
+   - Applies per-matrix sparsity thresholding after averaging across sessions/runs:
+     ```python
+     threshold = np.nanpercentile(np.abs(mat), sparsity * 100)
+     mat_sparse = np.where(np.abs(mat) >= threshold, mat, 0.0)
+     ```
+   - Thresholding on absolute values but preserving signs, same as skarf's built-in approach
+   - Returns same format as existing `load_avg_mats()` function for compatibility
+   - **Retrospective note**: Took me a day to debug why most of the pyspi matrices were returning NaNs after sparsity thresholding. Turns out they had NaNs along the diagonal and `np.percentile` was returning NaN when NaNs were present. Fixed by using `np.nanpercentile` instead.
+
+2. **Main prediction script** `scripts/eval_hcp_1200_sparse_behav_prediction.py`:
+   - CLI arguments: `--method`, `--func`, `--data-path`, `--target`, `--sparsity` (default 0.8), `--n-subjects` (for testing), `--seed`, `--n-splits`
+   - Loads method/func IDs from the mean sparsity CSV to maintain consistent organization
+   - Output structure: `results/hcp_1200_sparse_behav_prediction/sparsity-{sparsity:.2f}__parc-{parc_size}__pool-{pool}__n-{n_splits}__perm-{perm_test}__seed-{seed}/{method_id:03d}__{method}__{func}/target-{target}/`
+   - Uses identical prediction pipeline as original scripts: KernelRidge with precomputed Pearson kernel, GridSearchCV with alpha values, GroupShuffleSplit for 20-fold outer CV, GroupKFold for 5-fold inner CV for hyperparameter tuning
+
+3. **Test script** `scripts/test_sparse_behav_prediction.sh`:
+   - Tests 3 representative combinations on 50 subjects: pyspi `cov_EmpiricalCovariance`, skarf `cov_empirical`, and skarf `linear_lasso`
+   - Moved these folders to my local `results` folder on Arcana to not have to rerun previous steps:
+     - hcp_1200_pyspi_behav_prediction_all_targets_cov
+     - hcp_1200_pyspi_behav_prediction_factor_full
+     - hcp_1200_rfmri_fd
+     - hcp_1200_skarf_behav_prediction_factor_full
+   - Moved `hcp_pheno` folder from ACCESS to `/srv/data/skarf/hcp_pheno` on Arcana
+   - Fixed environment variable issues by editing the `.env` file
+      ```
+      # Root directory of the project repo.
+      PROJECT_ROOT="/home/aerkent/skarf-experiments"
+
+      # Path to HCP-1200 data including all cifti space preprocessed fMRI data.
+      # Download from s3 using:
+      #
+      #    aws s3 sync s3://hcp-openaccess/HCP_1200/ "${HCP_1200_DIR}" \
+      #    --exclude "*" \
+      #    --include "*/MNINonLinear/Results/?fMRI_*/?fMRI_*_Atlas_MSMAll*.dtseries.nii"
+      HCP_1200_DIR="/srv/data/skarf/hcp_1200"
+
+      # Path to HCP-1200 behavioral data. Download from connectome DB:
+      # https://db.humanconnectome.org/data/projects/HCP_1200.
+      HCP_PHENO_UNRESTRICTED="/srv/data/skarf/hcp_pheno/unrestricted_clane9_4_23_2024_13_28_14.csv"
+      HCP_PHENO_RESTRICTED="/srv/data/skarf/hcp_pheno/restricted.csv"
+
+      # Matplotlib plotting style
+      MPL_STYLE="${PROJECT_ROOT}/resources/clane.mplstyle"
+
+      # Path to octave installation
+      OCTAVE_PATH="/opt/packages/octave/6.2.0"
+      PATH="${PATH}:${OCTAVE_PATH}"
+      ```
+   - After these steps, test script completed successfully, results matched expected behavior
+
+4. **Parallel execution scripts**:
+   - `scripts/eval_hcp_1200_sparse_behav_prediction_all.py`: Generates list of all 161 method/func combinations from the mean sparsity CSV
+   - `scripts/eval_hcp_1200_sparse_behav_prediction_parallel.py`: Uses `joblib.Parallel(n_jobs=6, verbose=10)` to run 6 predictions simultaneously on Arcana's 24 cores (6 jobs × 4 cores each)
+   - Arcana doesn't have SLURM or GNU parallel, instead used Joblib like before for parallelization.
+   - Completed successfully in 37.5 minutes for all 161 combinations on Cognition target
+
+5. **Analysis notebook** `notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb`:
+   - Analyzes and visualizes results comparing sparse/nonsparse pyspi vs skarf methods
+   - Notebook structure follows pattern of existing PySPI and skarf analysis notebooks
+   - Analyses implemented:
+     1. **Sparse vs Non-Sparse Comparison**: How does imposed sparsity affect methods with different natural sparsity?
+     2. **Natural Sparsity vs Performance**: Is there a relationship between original sparsity and post-threshold performance?
+     3. **Top Performers**: Which methods rank highest under uniform sparsity?
+     4. **Distributions and Statistical Testing**: Do skarf and PySPI families differ significantly?
+     5. **Stratified Analysis**: Within natural sparsity bins, do method families differ?
+     6. **Rank Correlation**: Are rankings preserved between non-sparse and sparse conditions?
+
+6. **justfile commands**:
+   - `test_sparse_behav_prediction`: Runs test script on 50 subjects
+   - `eval_hcp_1200_sparse_behav_prediction_all`: Runs full parallel execution with logging
+   - `analyze_hcp_1200_sparse_behav_prediction`: Runs analysis notebook
+
+### Design Decisions
+
+- Focus on **Cognition target only** (most predictable factor)
+- 0.8 sparsity is imposed uniformly, **without handling symmetrical/nonsymmetrical** matrices separately (symmetrical matrices effectively have 0.9 sparsity after thresholding since each edge is represented twice)
+- Sparsity imposition is done **after averaging** across sessions/runs
+- Sparsity is thresholded at **t=0.0** (only 6 out of 161 methods end up having >0.8 sparsity while the rest is <0.05, t=0.05 gives a better distribution).
+- **lag=1** is not included for skarf, only lag=0.
