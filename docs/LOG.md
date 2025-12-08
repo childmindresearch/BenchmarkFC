@@ -755,7 +755,7 @@ Implemented sparse behavioral prediction pipeline to enable fair comparison betw
 Created several new components:
 
 1. **Data loading utility** in `src/arfcexp/matrices.py`:
-   - Added `load_avg_mats_from_parquet()` function that uses polars for memory-efficient lazy loading from the aggregated parquet file
+   - Added `load_avg_mats_and_impose_sparsity()` function that uses polars for memory-efficient lazy loading from the aggregated parquet file
    - Applies per-matrix sparsity thresholding after averaging across sessions/runs:
      ```python
      threshold = np.nanpercentile(np.abs(mat), sparsity * 100)
@@ -835,3 +835,60 @@ Created several new components:
 - Sparsity imposition is done **after averaging** across sessions/runs
 - Sparsity is thresholded at **t=0.0** (only 6 out of 161 methods end up having >0.8 sparsity while the rest is <0.05, t=0.05 gives a better distribution).
 - **lag=1** is not included for skarf, only lag=0.
+
+## 2025-12-04
+
+_Alp's #4_
+
+Updated sparse behavioral prediction pipeline to properly handle symmetric matrices and add `lag=1` support for skarf methods.
+
+### Matrix Symmetry Handling
+
+**Problem**: Symmetric matrices were being thresholded on the full matrix instead of just the upper triangle.
+
+**Solution**:
+1. Created symmetry detection notebook (`notebooks/detect_matrix_symmetry.ipynb`) that:
+   - Samples 20 matrices from each method/func combination
+   - Checks symmetry using `np.allclose(mat, mat.T, rtol=1e-5, atol=1e-8, equal_nan=True)`
+   - Generates lookup dictionary saved to `resources/matrix_symmetry_lookup.json`
+   - Format: `{"method__func": boolean}` mapping
+
+2. Updated `src/arfcexp/matrices.py`:
+   - Added `load_symmetry_lookup()` function to load precomputed symmetry dictionary
+   - Modified `load_avg_mats_and_impose_sparsity()` to accept `symmetry_lookup` parameter
+   - Updated `apply_sparsity()` function to handle symmetric matrices differently:
+     - **Symmetric**: Extract upper triangle → threshold → mirror to lower triangle
+     - **Non-symmetric**: Threshold entire matrix (original behavior)
+   - This ensures exactly 0.8 sparsity is achieved for both symmetric and non-symmetric matrices
+
+### `lag=1` Support for Skarf
+
+**Motivation**: Include temporal prediction (lag=1) along with concurrent prediction (lag=0) for skarf methods.
+
+**Implementation**:
+1. Updated `src/arfcexp/matrices.py`:
+   - Added `lag` parameter to `load_avg_mats_and_impose_sparsity()`
+   - Filter parquet data by lag for skarf methods: `pl.col("lag") == lag`
+
+2. Updated `scripts/eval_hcp_1200_sparse_behav_prediction.py`:
+   - Added `--lag` CLI argument
+   - Pass lag to matrix loading function
+   - Modified output directory structure for **skarf only**: `{method_id:03d}__{method}__{func}__lag-{lag}`
+
+3. Updated `scripts/eval_hcp_1200_sparse_behav_prediction_parallel.py`:
+   - Generate job list with `(method, func, lag)` tuples
+   - All methods: lag=0
+   - Skarf methods: additional lag=1 entries
+   - Total jobs: 161 (lag=0) + 12 skarf (lag=1) = 173 combinations
+
+### Analysis Notebook Updates
+
+Updated `notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb`:
+1. **Changed natural sparsity threshold from t=0.0 to t=0.05**:
+    - Previous: `sparsity_t0.00_mean` (sparsity counting only exact zeros)
+    - Updated: `sparsity_t0.05_mean` (sparsity with 0.05 threshold)
+    - Rationale: Better captures sparsity since values < 0.05 are effectively negligible
+    - Only 6 out of 161 methods have >0.8 sparsity at t=0.0, but more realistic distribution at t=0.05
+2. Added `lag` to all relevant analyses:
+    - Stratified analyses now consider lag=0 and lag=1 separately for skarf methods
+    - Compared performance differences between lag=0 and lag=1 within skarf family

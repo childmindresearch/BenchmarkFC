@@ -26,7 +26,11 @@ from sklearn.utils.metaestimators import _safe_split
 import arfcexp.hcp
 import arfcexp.prediction
 import arfcexp.transforms
-from arfcexp.matrices import compute_pearson_kernel, load_avg_mats_from_parquet
+from arfcexp.matrices import (
+    compute_pearson_kernel,
+    load_avg_mats_and_impose_sparsity,
+    load_symmetry_lookup,
+)
 
 logging.basicConfig(
     format="[%(levelname)s %(asctime)s]: %(message)s",
@@ -72,6 +76,7 @@ def main(
     n_splits: int = 20,
     perm_test: bool = False,
     n_subjects: int | None = None,
+    lag: int = 0,
     seed: int = 2142,
     out_dir: str | None = None,
 ):
@@ -96,6 +101,7 @@ def main(
         "n_splits": n_splits,
         "perm_test": perm_test,
         "n_subjects": n_subjects,
+        "lag": lag,
         "seed": seed,
         "data_path": data_path,
     }
@@ -111,10 +117,16 @@ def main(
         out_dir = Path(out_dir)
     out_dir: Path
 
+    # Add lag suffix to directory name for skarf methods only
+    if method == "skarf":
+        method_func_dir = f"{method_id:03d}__{method}__{func}__lag-{lag}"
+    else:
+        method_func_dir = f"{method_id:03d}__{method}__{func}"
+    
     out_dir = (
         out_dir
         / f"sparsity-{sparsity:.2f}__parc-{parc_size}__pool-{pool}__n-{n_splits}__perm-{int(perm_test)}__seed-{seed}"
-        / f"{method_id:03d}__{method}__{func}"
+        / method_func_dir
         / f"target-{target}"
     )
 
@@ -140,9 +152,14 @@ def main(
     if n_subjects is not None:
         sub_list = sub_list[:n_subjects]
         logging.info(f"Using subset of {n_subjects} subjects for testing.")
+    
+    # Load symmetry lookup for efficient symmetric matrix handling
+    logging.info("Loading symmetry lookup...")
+    symmetry_lookup = load_symmetry_lookup(project_root)
 
-    avg_mats_df = load_avg_mats_from_parquet(
-        data_path, method, func, sub_list, sparsity=sparsity
+    avg_mats_df = load_avg_mats_and_impose_sparsity(
+        data_path, method, func, sub_list, 
+        sparsity=sparsity, symmetry_lookup=symmetry_lookup, lag=lag
     )
 
     # Matrices are averaged over session/run.

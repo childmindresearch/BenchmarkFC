@@ -14,18 +14,19 @@ from pathlib import Path
 from joblib import Parallel, delayed
 
 
-def run_prediction(method: str, func: str, data_path: str, n_jobs_per_task: int = 4) -> dict:
+def run_prediction(method: str, func: str, lag: int, data_path: str, n_jobs_per_task: int = 4) -> dict:
     """
-    Run prediction for a single method/func combination.
+    Run prediction for a single method/func/lag combination.
 
     Args:
         method: Method name (pyspi or skarf)
         func: Function name
+        lag: Lag value (only relevant for skarf)
         data_path: Path to parquet data file
         n_jobs_per_task: Number of jobs to allocate per prediction task
 
     Returns:
-        dict: Result status with method, func, and return code
+        dict: Result status with method, func, lag, and return code
     """
     # Set thread limits for this subprocess (if needed)
     # scikit-learn will use these to limit its internal parallelism
@@ -44,6 +45,8 @@ def run_prediction(method: str, func: str, data_path: str, n_jobs_per_task: int 
         method,
         "--func",
         func,
+        "--lag",
+        str(lag),
         "--data-path",
         data_path,
         "--target",
@@ -54,16 +57,16 @@ def run_prediction(method: str, func: str, data_path: str, n_jobs_per_task: int 
         "2142",
     ]
 
-    print(f"[START] {method} {func}")
+    print(f"[START] {method} {func} lag={lag}")
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
 
     if result.returncode == 0:
-        print(f"[SUCCESS] {method} {func}")
+        print(f"[SUCCESS] {method} {func} lag={lag}")
     else:
-        print(f"[FAILED] {method} {func} (exit code: {result.returncode})")
+        print(f"[FAILED] {method} {func} lag={lag} (exit code: {result.returncode})")
         print(f"stderr: {result.stderr[:500]}")
 
-    return {"method": method, "func": func, "returncode": result.returncode}
+    return {"method": method, "func": func, "lag": lag, "returncode": result.returncode}
 
 
 def main():
@@ -77,14 +80,22 @@ def main():
     method_func_list = Path(project_root) / "resources" / "sparse_prediction_method_func_list.txt"
     data_path = "/srv/projects/skarf/data_aggregation/hcp_1200_rfmri_schaefer.parquet"
 
-    # Load method/func combinations
+    # Load method/func combinations and generate job list with lag
+    # For all methods: add lag=0
+    # For skarf only: also add lag=1
     combinations = []
     with open(method_func_list) as f:
         for line in f:
             method, func = line.strip().split("\t")
-            combinations.append((method, func))
+            # Add lag=0 for all methods
+            combinations.append((method, func, 0))
+            # Add lag=1 for skarf only
+            if method == "skarf":
+                combinations.append((method, func, 1))
 
     print(f"Total combinations to run: {len(combinations)}")
+    print(f"  - All methods at lag=0")
+    print(f"  - Skarf methods also at lag=1")
     print(f"Will use 6 parallel jobs (4 cores each = 24 cores total)")
     print("-" * 80)
 
@@ -93,8 +104,8 @@ def main():
     # Each prediction gets 4 cores (via sklearn's internal parallelization)
     # Total: 6 × 4 = 24 cores utilized
     results = Parallel(n_jobs=6, verbose=10)(
-        delayed(run_prediction)(method, func, data_path, n_jobs_per_task=4)
-        for method, func in combinations
+        delayed(run_prediction)(method, func, lag, data_path, n_jobs_per_task=4)
+        for method, func, lag in combinations
     )
 
     # Summary
@@ -109,7 +120,7 @@ def main():
         print("\nFailed combinations:")
         for r in results:
             if r["returncode"] != 0:
-                print(f"  - {r['method']} {r['func']}")
+                print(f"  - {r['method']} {r['func']} lag={r['lag']}")
 
 
 if __name__ == "__main__":
