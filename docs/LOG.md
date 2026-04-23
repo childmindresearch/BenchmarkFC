@@ -892,3 +892,53 @@ Updated `notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb`:
 2. Added `lag` to all relevant analyses:
     - Stratified analyses now consider lag=0 and lag=1 separately for skarf methods
     - Compared performance differences between lag=0 and lag=1 within skarf family
+
+## 2026-04-23
+
+_[Alp] I realized I've been forgetting to push these changes, so this is a retrospective summary of work that accumulated locally and had not been pushed yet._
+
+- Added `notebooks/poster_figure2.ipynb` to rework the **PySPI vs skarf cognition figures** for the OHBM submission. It builds dense and uniformly sparse comparison panels, overlays permutation-null / baseline IQR bands, and annotates top methods with significance labels for both $R^2$ and correlation metrics.
+
+- Reworked the **matrix loading / metadata** layers to improve memory efficiency and method selection.
+  - `src/arfcexp/matrices.py` now has an `EfficientMatrixReader` that builds a lightweight index over the aggregated parquet and reads only the needed rows / row groups and greatly improves memory usage, plus several functions that allow reading matrices from the aggregated parquet file we have on `arcana` and imposing sparsity.
+  - Added lookup resources for matrix properties and PySPI directionality and added more cells to the `detect_matrix_symmetry.ipynb` notebook to investigate the discrepancies in directionality across PySPI paper and calculated matrices. Future benchmarks can use these lookups to select methods based on their properties:
+    - `resources/matrix_symmetry_lookup.json`
+    - `resources/matrix_antisymmetry_lookup.json`
+    - `resources/matrix_degenerate_lookup.json`
+    - `resources/pyspi_directionality.json`
+
+- Added `notebooks/edge_intensity_histograms.ipynb` to visualize pooled edge-value distributions across all PySPI / skarf metric-lag combinations. This was mainly useful for checking how different the native matrix scales and signed distributions were before comparing methods under matched sparsity. Important analytic decisions for these edge-intensity calculations:
+  - Kept the histograms in the methods' **native value space**: no absolute value transform and no per-matrix normalization, so the plots reflect the actual signed scale each estimator produces.
+  - Used only the **upper triangle** for symmetric and antisymmetric matrices, since the lower triangle is either duplicate information or just the sign-flipped version of the same edges.
+  - Pooled edge values across all available subjects / sessions / runs for each method-lag combination, because the goal here was to characterize each metric's overall output distribution rather than subject-level variation.
+  - Excluded degenerate metrics using the new lookup resources.
+  - Used a fixed histogram resolution but **metric-specific value ranges**, so both very narrow and very wide edge distributions remain visible instead of being compressed onto one global scale.
+
+- Added a new **homotopic FC** benchmark for comparing PySPI and skarf methods.
+  - `src/arfcexp/homotopy.py` now contains Schaefer homotopic-pair utilities, directional homotopic extraction, global rank-based homotopic scoring, and heterotopic null sampling.
+  - `scripts/eval_hcp_1200_homotopic_fc.py` is the source-of-truth evaluator for loading one combo, computing subject-level homotopic scores, optional permutation-based heterotopic null summaries, and method-level statistics.
+  - `scripts/eval_hcp_1200_homotopic_fc_parallel.py` parallelizes this over all combinations while giving each combo its own seed.
+  - Important analytic decisions for this benchmark:
+    - Compared methods in **rank space** rather than raw FC magnitude: each matrix is converted to global off-diagonal percentile ranks so dense covariance, sparse skarf, and directed / undirected PySPI outputs can be compared on a common scale.
+    - Defaulted to ranking by absolute value so the benchmark emphasizes connection strength rather than the sign conventions of different methods.
+    - Kept upper and lower homotopic summaries separate for directed methods, but collapsed them to a single score for symmetric / undirected methods.
+    - Excluded degenerate PySPI matrices from the benchmark set and included `lag=1` for skarf.
+    - Avoided zero-filling missing subject matrices for this analysis; instead, combinations are only analyzed if at least 90% of subjects have at least one valid run.
+    - Defined the null as **heterotopic inter-hemispheric** edges sampled from non-partner left-right parcel pairs, which I thought would be a more relevant comparison than testing against zero or against arbitrary within-hemisphere edges.
+    - Summarized results at both the subject and method levels, including paired PySPI vs skarf comparisons and lag-0 vs lag-1 comparisons within skarf.
+  - Added `tests/test_homotopy.py` to verify pair construction, directional summaries, rank bounds, and null reproducibility.
+
+- Added an HCP **demographics prediction** benchmark for gender and age, based on He et al. 2020 (doi.org/10.1016/j.neuroimage.2019.116276) methodology.
+  - `src/arfcexp/hcp.py` now exposes convenience loaders for HCP gender and age.
+  - `scripts/eval_hcp_1200_demographics_prediction.py` is the source-of-truth single-combination CLI: it runs nested-CV kernel ridge prediction from FC, supports `task=both` so gender and age reuse one matrix load / one kernel build, and resumes safely from per-split state files.
+  - `scripts/eval_hcp_1200_demographics_prediction_parallel.py` is a thin joblib subprocess wrapper for launching all method / function / lag combinations in parallel.
+  - Important analytic decisions for this benchmark:
+    - Followed the He et al. setup closely: predict **age** as a continuous target and **gender** from a continuous kernel ridge output followed by thresholding, rather than switching to a separate classifier.
+    - Did **not** regress out confounds from the targets here, since age and gender are themselves the demographic variables of interest and He et al. treat them directly.
+    - Used the same precomputed Pearson-kernel framework as the behavioral prediction pipeline so comparisons stay method-consistent across benchmarks.
+    - Used family-aware splits via HCP family groups, with 20 outer GroupShuffleSplit test folds and 20 inner grouped CV folds for hyperparameter tuning, to reduce leakage across related subjects.
+    - Tuned the ridge regularization with MSE over the full Yeo / He alpha grid rather than optimizing a correlation-based criterion.
+    - Required at least 90% valid subject coverage for a method / function before running prediction, so weak coverage does not silently turn into a biased comparison.
+    - For gender, recorded both the default 0.5-threshold accuracy and a train-optimized threshold accuracy, to separate raw regression calibration from the best achievable binary split.
+    - Kept `task=both` in the single-combination runner so age and gender reuse the exact same averaged matrices, kernel, and split logic rather than drifting apart across separate runs.
+  - Added `tests/test_demographics.py` for the new loaders, gender-threshold helpers, and resume logic.

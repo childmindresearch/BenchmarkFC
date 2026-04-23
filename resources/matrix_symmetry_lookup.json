@@ -64,7 +64,7 @@
   "pyspi__lmfit_ElasticNet": true,
   "pyspi__lmfit_Lasso": true,
   "pyspi__lmfit_Ridge": true,
-  "pyspi__lmfit_SGDRegressor": false,
+  "pyspi__lmfit_SGDRegressor": true,
   "pyspi__mi_gaussian": true,
   "pyspi__mi_kernel_W-0.25": true,
   "pyspi__pdist_braycurtis": true,

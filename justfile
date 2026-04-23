@@ -174,9 +174,31 @@ test_sparse_behav_prediction:
 # (149 pyspi + 12 skarf) with joblib parallel execution (6 jobs × 4 cores = 24 cores).
 eval_hcp_1200_sparse_behav_prediction_all:
     mkdir -p logs/eval_hcp_1200_sparse_behav_prediction_all 2>/dev/null
-    set -a && . "$(pwd)/.env" && set +a && uv run python scripts/eval_hcp_1200_sparse_behav_prediction_parallel.py 2>&1 | tee logs/eval_hcp_1200_sparse_behav_prediction_all/run_$(date +%Y%m%d_%H%M%S).log
+    uv run --env-file .env python scripts/eval_hcp_1200_sparse_behav_prediction_parallel.py 2>&1 | tee logs/eval_hcp_1200_sparse_behav_prediction_all/run_$(date +%Y%m%d_%H%M%S).log
 
 # Analysis and figures comparing sparse vs non-sparse behavioral prediction results.
 # Analyzes results with 0.8 imposed sparsity on all methods (pyspi and skarf).
 analyze_hcp_1200_sparse_behav_prediction:
     uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb
+
+# FC - homotopic FC benchmark across PySPI and skarf.
+# Computes rank-based homotopic FC summaries for all valid pyspi combos plus
+# skarf lag-0/lag-1 variants with configurable joblib parallel execution.
+eval_hcp_1200_homotopic_fc:
+    mkdir -p logs/eval_hcp_1200_homotopic_fc 2>/dev/null
+    uv run --env-file .env python scripts/eval_hcp_1200_homotopic_fc_parallel.py 2>&1 | tee logs/eval_hcp_1200_homotopic_fc/run_$(date +%Y%m%d_%H%M%S).log
+
+# Analysis and figures for homotopic FC benchmark results.
+analyze_hcp_1200_homotopic_fc:
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_homotopic_fc.ipynb
+
+# FC - demographics (gender + age) prediction from functional connectivity.
+# Predicts gender (KRR + threshold, He2020) and age (KRR) for all pyspi combos plus
+# skarf lag-0/lag-1 variants with configurable joblib parallel execution.
+eval_hcp_1200_demographics_prediction:
+    mkdir -p logs/eval_hcp_1200_demographics_prediction 2>/dev/null
+    uv run --env-file .env python scripts/eval_hcp_1200_demographics_prediction_parallel.py 2>&1 | tee logs/eval_hcp_1200_demographics_prediction/run_$(date +%Y%m%d_%H%M%S).log
+
+# Analysis and figures for demographics (gender + age) prediction results.
+analyze_hcp_1200_demographics_prediction:
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_demographics_prediction.ipynb

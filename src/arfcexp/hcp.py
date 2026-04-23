@@ -109,6 +109,19 @@ def load_hcp_family_groups() -> pd.Series:
     return hcp_family_groups
 
 
+def load_hcp_gender() -> pd.Series:
+    hcp_pheno = load_hcp_pheno()
+    hcp_gender = hcp_pheno.loc[:, "Gender"].map({"M": 0, "F": 1})
+    hcp_gender.name = "Gender"
+    return hcp_gender
+
+
+def load_hcp_age() -> pd.Series:
+    hcp_restricted_pheno = load_hcp_pheno(restricted=True)
+    hcp_age = hcp_restricted_pheno.loc[:, "Age_in_Yrs"]
+    return hcp_age
+
+
 def load_hcp_behav_factors_topk():
     hcp_factor_topk_path = (
         PROJECT_ROOT / "resources/column_lists/hcp_1200_behav_factors_topk.json"
