@@ -1,7 +1,105 @@
+"""
+Graph and matrix utilities for functional connectivity analysis.
+ 
+Shared primitives (import_matrix, sparse graph builders) are defined here
+and imported by reliability.py and info_density.py.
+"""
+
+import networkx as nx
 import numpy as np
 from brainspace.gradient import LaplacianEigenmaps
 from sklearn.cluster import SpectralClustering
 from scipy.optimize import linear_sum_assignment
+
+from arfcexp.matrices import collapse_maxabs, import_matrix
+ 
+ 
+def sparse_undirected_graph(
+    matrix: np.ndarray, sparsity: float = 0.8
+) -> tuple[nx.Graph, float, float]:
+    """Build a sparse weighted undirected graph from a connectivity matrix.
+ 
+    Keeps the top ``(1 - sparsity)`` fraction of edges by absolute weight.
+ 
+    Args:
+        matrix: connectivity matrix (flat or 2-D).
+        sparsity: fraction of edges to zero out (default 0.8 → keep top 20%).
+ 
+    Returns:
+        G: weighted undirected NetworkX graph
+        abs_thr: absolute weight threshold applied
+        density: graph density
+    """
+    A = import_matrix(matrix)
+    W = collapse_maxabs(A)
+    n = W.shape[0]
+ 
+    m_keep = int(round((1.0 - sparsity) * n * (n - 1) // 2))
+    iu = np.triu_indices(n, k=1)
+    w_abs = np.abs(W[iu])
+    valid = w_abs > 0
+ 
+    if m_keep <= 0 or not np.any(valid):
+        return nx.empty_graph(n), np.inf, 0.0
+ 
+    w_abs_valid = w_abs[valid]
+    if w_abs_valid.size <= m_keep:
+        selected = np.where(valid)[0]
+        abs_thr = float(w_abs_valid.min())
+    else:
+        top_idx = np.argpartition(w_abs_valid, -m_keep)[-m_keep:]
+        selected = np.where(valid)[0][top_idx]
+        abs_thr = float(w_abs_valid[top_idx].min())
+ 
+    B = np.zeros((n, n))
+    ii, jj = iu[0][selected], iu[1][selected]
+    B[ii, jj] = W[ii, jj]
+    B[jj, ii] = W[jj, ii]
+ 
+    G = nx.from_numpy_array(B)
+    G.remove_edges_from(nx.selfloop_edges(G))
+    return G, abs_thr, nx.density(G)
+ 
+ 
+def sparse_directed_graph(
+    matrix: np.ndarray, sparsity: float = 0.8
+) -> tuple[nx.DiGraph, float, float]:
+    """Build a sparse weighted directed graph from a connectivity matrix.
+ 
+    Keeps the top ``(1 - sparsity)`` fraction of directed edges by absolute weight.
+ 
+    Returns:
+        G: weighted directed NetworkX graph
+        abs_thr: absolute weight threshold applied
+        density: graph density
+    """
+    A = import_matrix(matrix)
+    n = A.shape[0]
+ 
+    m_keep = int(round((1.0 - sparsity) * n * (n - 1)))
+    ii, jj = np.where(~np.eye(n, dtype=bool))
+    w_abs = np.abs(A[ii, jj])
+    valid = w_abs > 0
+ 
+    if m_keep <= 0 or not np.any(valid):
+        return nx.empty_graph(n, create_using=nx.DiGraph), np.inf, 0.0
+ 
+    w_abs_valid = w_abs[valid]
+    if w_abs_valid.size <= m_keep:
+        selected = np.where(valid)[0]
+        abs_thr = float(w_abs_valid.min())
+    else:
+        top_idx = np.argpartition(w_abs_valid, -m_keep)[-m_keep:]
+        selected = np.where(valid)[0][top_idx]
+        abs_thr = float(w_abs_valid[top_idx].min())
+ 
+    B = np.zeros((n, n))
+    si, sj = ii[selected], jj[selected]
+    B[si, sj] = A[si, sj]
+ 
+    G = nx.from_numpy_array(B, create_using=nx.DiGraph)
+    G.remove_edges_from(nx.selfloop_edges(G))
+    return G, abs_thr, nx.density(G)
 
 
 def fc_to_affinity(mat: np.ndarray, threshold: float = 0.9) -> np.ndarray:
@@ -46,10 +144,6 @@ def calc_gradient_similarity(grad1: np.ndarray, grad2: np.ndarray) -> float:
     principal gradients.
 
     Canonical correlation is defined as the mean of squared cosine principal angles.
-
-    .. math::
-
-        \text{Similarity} = \frac{1}{k} \sum_{i=1}^k \cos^2(\theta_i).
 
     Args:
         grad1: first principal gradients, shape (n_nodes, n_components)
