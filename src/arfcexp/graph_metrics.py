@@ -145,6 +145,10 @@ def calc_gradient_similarity(grad1: np.ndarray, grad2: np.ndarray) -> float:
 
     Canonical correlation is defined as the mean of squared cosine principal angles.
 
+    .. math::
+        
+        \text{Similarity} = \frac{1}{k} \sum_{i=1}^k \cos^2(\theta_i).
+
     Args:
         grad1: first principal gradients, shape (n_nodes, n_components)
         grad2: second principal gradients, shape (n_nodes, n_components)
