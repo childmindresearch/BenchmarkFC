@@ -11,27 +11,59 @@ from brainspace.gradient import LaplacianEigenmaps
 from sklearn.cluster import SpectralClustering
 from scipy.optimize import linear_sum_assignment
 
-from arfcexp.matrices import collapse_maxabs, import_matrix
+from arfcexp.matrices import import_matrix
  
  
+def _extract_triangle_as_symmetric(A: np.ndarray, triangle: str) -> np.ndarray:
+    """Extract one triangle of A and mirror it to make a symmetric matrix.
+ 
+    For an asymmetric matrix A[i,j] != A[j,i], the upper triangle captures
+    the i->j direction and the lower triangle captures the j->i direction.
+    Each triangle is then mirrored to produce a valid symmetric undirected graph.
+ 
+    Args:
+        A: square matrix, shape (n, n).
+        triangle: "upper" uses A[i,j] for i < j;
+                  "lower" uses A[j,i] for i < j (i.e. the lower triangle values).
+ 
+    Returns:
+        Symmetric matrix, shape (n, n).
+    """
+    n = A.shape[0]
+    S = np.zeros((n, n))
+    iu = np.triu_indices(n, k=1)
+    if triangle == "upper":
+        S[iu] = A[iu]
+    else:
+        # lower triangle: A[j, i] for each (i, j) pair where i < j
+        S[iu] = A[iu[1], iu[0]]
+    return S + S.T
+
 def sparse_undirected_graph(
-    matrix: np.ndarray, sparsity: float = 0.8
+    matrix: np.ndarray,
+    sparsity: float = 0.0,
+    triangle: str = "upper",
 ) -> tuple[nx.Graph, float, float]:
-    """Build a sparse weighted undirected graph from a connectivity matrix.
+    """Build a sparse weighted undirected graph from one triangle of a matrix.
  
-    Keeps the top ``(1 - sparsity)`` fraction of edges by absolute weight.
+     For symmetric matrices both triangles are identical so ``triangle`` has no
+    effect. For asymmetric matrices, pass ``triangle="upper"`` or
+    ``triangle="lower"`` to compute metrics on each direction separately.
+
+    Keeps the top ``(1 - sparsity)`` fraction of directed edges by absolute weight.
  
     Args:
         matrix: connectivity matrix (flat or 2-D).
-        sparsity: fraction of edges to zero out (default 0.8 → keep top 20%).
+        sparsity: fraction of edges to zero out (default 0.0)
+        triangle: "upper" or "lower" - which triangle to use
  
     Returns:
         G: weighted undirected NetworkX graph
         abs_thr: absolute weight threshold applied
-        density: graph density
+        density: resulting graph density
     """
     A = import_matrix(matrix)
-    W = collapse_maxabs(A)
+    W = _extract_triangle_as_symmetric(A, triangle=triangle)
     n = W.shape[0]
  
     m_keep = int(round((1.0 - sparsity) * n * (n - 1) // 2))
@@ -62,7 +94,8 @@ def sparse_undirected_graph(
  
  
 def sparse_directed_graph(
-    matrix: np.ndarray, sparsity: float = 0.8
+    matrix: np.ndarray,
+    sparsity: float = 0.0,
 ) -> tuple[nx.DiGraph, float, float]:
     """Build a sparse weighted directed graph from a connectivity matrix.
  
@@ -71,7 +104,7 @@ def sparse_directed_graph(
     Returns:
         G: weighted directed NetworkX graph
         abs_thr: absolute weight threshold applied
-        density: graph density
+        density: resulting graph density
     """
     A = import_matrix(matrix)
     n = A.shape[0]

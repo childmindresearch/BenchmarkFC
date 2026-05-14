@@ -31,13 +31,6 @@ def import_matrix(mat: np.ndarray, *, require_square: bool = True) -> np.ndarray
         raise ValueError("Expected a 1-D or 2-D array.")
     return np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
  
- 
-def collapse_maxabs(A: np.ndarray) -> np.ndarray:
-    """Symmetrise a (possibly asymmetric) matrix by keeping the signed value
-    from whichever direction has the larger absolute value."""
-    absA, absAT = np.abs(A), np.abs(A.T)
-    W = np.where(absA >= absAT, A, A.T)
-    return 0.5 * (W + W.T)
 
 class EfficientMatrixReader:
     """Memory-efficient reader for large parquet files with matrix columns.

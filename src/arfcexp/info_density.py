@@ -14,7 +14,7 @@ Metrics
     compute_trophic_incoherence - trophic incoherence parameter q
     compute_core_depth - maximum k-core number
  
-    compute_all - wrapper returning a flat dict of all scalar
+    compute_all_intrinsic - wrapper returning a flat dict of all scalar
         metrics for one matrix
 """
   
@@ -25,12 +25,12 @@ import numpy as np
 from networkx.algorithms.approximation import traveling_salesman
 from scipy.stats import entropy
  
-from arfcexp.graph_metrics import sparse_directed_graph, sparse_undirected_graph
-from arfcexp.matrices import collapse_maxabs, import_matrix
+from arfcexp.graph_metrics import sparse_directed_graph, sparse_undirected_graph, _extract_triangle_as_symmetric
+from arfcexp.matrices import import_matrix
 
 
 def compute_sve(matrix: np.ndarray) -> float:
-    """Singular value entropy (bits).
+    """Singular value entropy.
  
     Measures how evenly the variance is spread across singular values —
     higher entropy means more distributed, lower-rank structure.
@@ -49,6 +49,7 @@ def compute_sve(matrix: np.ndarray) -> float:
     p = S / S.sum()
     return float(entropy(p, base=2))
 
+
 def compute_stable_rank(matrix: np.ndarray, eps: float = 1e-12) -> float:
     """Stable rank = ||M||_F² / ||M||_2²
  
@@ -65,6 +66,7 @@ def compute_stable_rank(matrix: np.ndarray, eps: float = 1e-12) -> float:
     frob_sq = float(np.linalg.norm(A, ord="fro") ** 2)
     spec_sq = float(np.linalg.norm(A, ord=2) ** 2)
     return frob_sq / spec_sq if spec_sq > eps else 0.0
+
 
 class RichClubResult(NamedTuple):
     """Scalar summaries of the rich-club coefficient curve.
@@ -86,8 +88,9 @@ class RichClubResult(NamedTuple):
 def compute_rich_club(
     matrix: np.ndarray,
     *,
-    sparsity: float = 0.8,
-    normalized: bool = True,
+    sparsity: float = 0.0,
+    triangle: str = "upper",
+    normalized: bool = False,
     seed: int = 70,
     Q: int = 10,
     sig_thr: float = 1.0,
@@ -97,6 +100,7 @@ def compute_rich_club(
     Args:
         matrix: connectivity matrix (flat or 2-D).
         sparsity: sparsity level for graph thresholding.
+        triangle: "upper" or "lower" — which triangle to use for asymmetric matrices.
         normalized: whether to normalise rho(k) by random graph expectation.
         seed: RNG seed for random graph generation.
         Q: number of edge swaps per edge for random graph.
@@ -105,7 +109,7 @@ def compute_rich_club(
     Returns:
         :class:`RichClubResult` named tuple.
     """
-    G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity)
+    G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity, triangle=triangle)
  
     if G.number_of_edges() == 0:
         return RichClubResult(np.nan, np.nan, np.nan, np.nan, {})
@@ -138,21 +142,24 @@ def compute_rich_club(
 def compute_small_worldness(
     matrix: np.ndarray,
     *,
-    sparsity: float = 0.8,
+    sparsity: float = 0.0,
+    triangle: str = "upper",
     seed: int = 70,
-    nrand: int = 5,
+    nrand: int = 1,
     nswap: int = 2000,
     use_lcc: bool = True,
+    min_density: float = 0.01,
 ) -> float:
     """Small-world sigma = (C / C_r) / (L / L_r).
  
-    σ > 1 -> small-world topology.
-    σ ≈ 1 -> random-like.
-    σ < 1 -> not small-world.
+    sigma > 1 -> small-world topology.
+    sigma ~ 1 -> random-like.
+    sigma < 1 -> not small-world.
  
     Args:
         matrix: connectivity matrix (flat or 2-D).
         sparsity: sparsity level for graph thresholding.
+        triangle: "upper" or "lower" — which triangle to use for asymmetric matrices.
         seed: RNG seed for random reference graphs.
         nrand: number of random reference graphs to average over.
         nswap: number of edge swaps per randomisation.
@@ -162,25 +169,36 @@ def compute_small_worldness(
     Returns:
         Small-world sigma, or NaN if the graph is degenerate.
     """
-    G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity)
+    G, _, density = sparse_undirected_graph(matrix, sparsity=sparsity, triangle=triangle)
  
     if G.number_of_nodes() < 3 or G.number_of_edges() == 0:
-        return float("nan")
- 
+        return np.nan
+    
+    if density < min_density:
+        return np.nan
+    
     if use_lcc and not nx.is_connected(G):
         G = G.subgraph(max(nx.connected_components(G), key=len)).copy()
  
     C = nx.transitivity(G)
     L = nx.average_shortest_path_length(G)
+
+    # Scale nswap to the actual edge count
+    actual_nswap = min(nswap, G.number_of_edges() // 2) 
+    if actual_nswap < 10:
+        return np.nan
  
     rng = np.random.default_rng(seed)
     Crs, Lrs = [], []
     for _ in range(nrand):
         Gr = G.copy()
-        nx.double_edge_swap(
-            Gr, nswap=nswap, max_tries=nswap * 20,
-            seed=int(rng.integers(0, 2 ** 31 - 1)),
-        )
+        try:  # ADD TRY/EXCEPT — catches the swap warning as a raised error if ever rethrown
+            nx.double_edge_swap(
+                Gr, nswap=actual_nswap, max_tries=actual_nswap * 20, 
+                seed=int(rng.integers(0, 2 ** 31 - 1)),
+            )
+        except nx.NetworkXAlgorithmError:
+            continue
         if use_lcc and not nx.is_connected(Gr):
             Gr = Gr.subgraph(max(nx.connected_components(Gr), key=len)).copy()
         if Gr.number_of_nodes() < 3 or Gr.number_of_edges() == 0:
@@ -189,11 +207,11 @@ def compute_small_worldness(
         Lrs.append(nx.average_shortest_path_length(Gr))
  
     if not Crs:
-        return float("nan")
+        return np.nan
  
     Cr, Lr = float(np.mean(Crs)), float(np.mean(Lrs))
     if Cr == 0 or L == 0 or Lr == 0:
-        return float("nan")
+        return np.nan
  
     return float((C / Cr) / (L / Lr))
 
@@ -202,6 +220,7 @@ def compute_tsp_cost(
     matrix: np.ndarray,
     *,
     nodes: list[int] | None = None,
+    triangle: str = "upper",
 ) -> float:
     """Approximate TSP tour cost on a distance graph derived from FC weights.
  
@@ -211,12 +230,13 @@ def compute_tsp_cost(
     Args:
         matrix: connectivity matrix (flat or 2-D).
         nodes: subset of node indices (defaults to all nodes).
+        triangle: "upper" or "lower" — which triangle to use for asymmetric matrices.
  
     Returns:
         Total tour length.
     """
     A = import_matrix(matrix)
-    W = collapse_maxabs(A)
+    W = _extract_triangle_as_symmetric(A, triangle=triangle)
     n = W.shape[0]
     if nodes is None:
         nodes = list(range(n))
@@ -234,13 +254,17 @@ def compute_tsp_cost(
         cost += G[tour[-1]][tour[0]]["weight"]
     return float(cost)
 
+
 def compute_trophic_incoherence(
     matrix: np.ndarray,
     *,
-    sparsity: float = 0.8,
+    sparsity: float = 0.0,
     absolute_weights: bool = False,
 ) -> float:
     """Trophic incoherence parameter q of the sparse directed graph.
+
+    Uses the full matrix — not split by triangle since directionality is
+    the point of the metric.
  
     Args:
         matrix: connectivity matrix (flat or 2-D).
@@ -252,50 +276,109 @@ def compute_trophic_incoherence(
     """
     G, _, _ = sparse_directed_graph(matrix, sparsity=sparsity)
     if G.number_of_edges() == 0:
-        return float("nan")
+        return np.nan
     if absolute_weights:
         for _, _, d in G.edges(data=True):
             d["weight"] = abs(float(d["weight"]))
     try:
         return float(nx.trophic_incoherence_parameter(G, weight="weight"))
     except Exception:
-        return float("nan")
+        return np.nan
     
 
-def compute_core_depth(matrix: np.ndarray, *, sparsity: float = 0.8) -> float:
+def compute_core_depth(
+    matrix: np.ndarray,
+    *,
+    sparsity: float = 0.0,
+    triangle: str = "upper",
+) -> float:
     """Maximum k-core number of the sparse undirected graph.
  
-    Higher values indicate a denser, more hierarchically organised core.
+    Higher values indicate a denser, more hierarchically organized core.
  
     Args:
         matrix: connectivity matrix (flat or 2-D).
         sparsity: sparsity level for graph thresholding.
+        triangle: "upper" or "lower" — which triangle to use for asymmetric matrices.
  
     Returns:
         Maximum core number (0 if graph is empty).
     """
-    G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity)
+    G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity, triangle=triangle)
     core_numbers = nx.core_number(G)
     return float(max(core_numbers.values())) if core_numbers else 0.0
 
+# ---------------------------------------------------------------------------
+# Batch wrapper for all intrinsic metrics
+# ---------------------------------------------------------------------------
 
-def compute_all(matrix, *, sparsity=0.8, tsp_nodes=None, 
-                small_world_kwargs=None, rich_club_kwargs=None):
+def compute_all_intrinsic(
+    matrix: np.ndarray,
+    *,
+    is_symmetric: bool = True,
+    is_antisymmetric: bool = False,
+    tsp_nodes: list[int] | None = None,
+    small_world_kwargs: dict | None = None,
+    rich_club_kwargs: dict | None = None,
+) -> dict[str, float]:
+    """Compute all information-density metrics for a single matrix.
+ 
+    Sparsity is assumed to have been applied upstream — all graph builders
+    use ``sparsity=0.0`` to preserve the existing sparsity pattern.
+ 
+    For symmetric matrices (is_symmetric=True), each metric is computed once.
+    For asymmetric matrices (is_symmetric=False), undirected graph metrics are
+    computed separately on the upper and lower triangles, returned with
+    ``_upper`` / ``_lower`` suffixes. Directed metrics (trophic incoherence)
+    and matrix-level metrics (SVE, stable rank) are unaffected by is_symmetric.
+
+    Args:
+        matrix: connectivity matrix (flat or 2-D).
+        is_symmetric: whether the matrix is symmetric.
+        is_antisymmetric: whether the matrix is antisymmetric.
+        tsp_nodes: node subset for TSP (None=all nodes)
+        small_world_kwargs: extra kwargs forwarded to ``compute_small_worldness``.
+        rich_club_kwargs: extra kwards forwarded to ``compute_rich_club``.
+
+    Returns:
+        Flat dict of scalar metrics.
+    """
     sw_kw = small_world_kwargs or {"seed": 70, "nrand": 1, "nswap": 2000}
     rc_kw = rich_club_kwargs or {}
-    rc = compute_rich_club(matrix, sparsity=0.0, **rc_kw)
 
-    return {
+    # matrix-level metrics — not affected by symmetry
+    result: dict[str, float] = {
         "sv_entropy": compute_sve(matrix),
         "stable_rank": compute_stable_rank(matrix),
-        "rich_club_auc": rc.auc,
-        "rich_club_k_at_max": rc.k_at_max,
-        "rich_club_sig_k_range": rc.sig_k_range,
-        "rich_club_mean_rho": rc.mean_rho,
-        "small_worldness": compute_small_worldness(matrix, sparsity=0.0, **sw_kw),
-        "tsp_cost": compute_tsp_cost(matrix, nodes=tsp_nodes),
-        "trophic_incoherence": compute_trophic_incoherence(matrix, sparsity=0.0),
-        "trophic_incoherence_abs": compute_trophic_incoherence(matrix, sparsity=0.0, 
-                                                                absolute_weights=True),
-        "core_depth": compute_core_depth(matrix, sparsity=0.0),
+        "trophic_incoherence": compute_trophic_incoherence(matrix),
+        "trophic_incoherence_abs": compute_trophic_incoherence(matrix, absolute_weights=True),
     }
+
+    if is_symmetric or is_antisymmetric:
+        # single computation — either truly symmetric or antisymmetric
+        # (antisymmetric: triangles are sign-flipped, compute once on upper)
+        rc = compute_rich_club(matrix, triangle="upper", **rc_kw)
+        result.update({
+            "rich_club_auc": rc.auc,
+            "rich_club_k_at_max": rc.k_at_max,
+            "rich_club_sig_k_range": rc.sig_k_range,
+            "rich_club_mean_rho": rc.mean_rho,
+            "small_worldness": compute_small_worldness(matrix, triangle="upper", **sw_kw),
+            "tsp_cost": compute_tsp_cost(matrix, nodes=tsp_nodes, triangle="upper"),
+            "core_depth": compute_core_depth(matrix, triangle="upper"),
+        })
+    else:
+        # genuinely asymmetric — compute upper and lower separately
+        for tri in ("upper", "lower"):
+            rc = compute_rich_club(matrix, triangle=tri, **rc_kw)
+            result.update({
+                f"rich_club_auc_{tri}": rc.auc,
+                f"rich_club_k_at_max_{tri}": rc.k_at_max,
+                f"rich_club_sig_k_range_{tri}": rc.sig_k_range,
+                f"rich_club_mean_rho_{tri}": rc.mean_rho,
+                f"small_worldness_{tri}": compute_small_worldness(matrix, triangle=tri, **sw_kw),
+                f"tsp_cost_{tri}": compute_tsp_cost(matrix, nodes=tsp_nodes, triangle=tri),
+                f"core_depth_{tri}": compute_core_depth(matrix, triangle=tri),
+            })
+
+    return result
