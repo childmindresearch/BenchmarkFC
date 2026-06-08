@@ -13,6 +13,24 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
+def import_matrix(mat: np.ndarray, *, require_square: bool = True) -> np.ndarray:
+    """Reshape a flat or 2-D array to a square float64 matrix.
+    """
+    arr = np.asarray(mat, dtype=np.float64)
+    if arr.ndim == 1:
+        n = int(np.sqrt(arr.size))
+        if n * n != arr.size:
+            raise ValueError(
+                f"Cannot reshape 1-D array of length {arr.size} to a square matrix."
+            )
+        arr = arr.reshape(n, n)
+    elif arr.ndim == 2:
+        if require_square and arr.shape[0] != arr.shape[1]:
+            raise ValueError(f"Matrix must be square, got shape {arr.shape}.")
+    else:
+        raise ValueError("Expected a 1-D or 2-D array.")
+    return np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+ 
 
 class EfficientMatrixReader:
     """Memory-efficient reader for large parquet files with matrix columns.
