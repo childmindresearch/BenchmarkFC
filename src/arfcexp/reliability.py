@@ -20,12 +20,22 @@ import pandas as pd
 from arfcexp.graph_metrics import calc_gradient_similarity, fc_to_affinity, fit_gradients
 from arfcexp.icc import batch_icc, ICCResult
 from arfcexp.matrices import apply_sparsity, import_matrix
+from typing import NamedTuple
+from scipy.stats import zscore
+import logging
+
+logger = logging.getLogger(__name__)
+
+class TestRetestData(NamedTuple):
+    subs: list
+    test: np.ndarray
+    retest: np.ndarray
 
 def _build_test_retest(
     run_df: pd.DataFrame,
     *,
     mat_col: str,
-) -> tuple[list, np.ndarray, np.ndarray] | None:
+) -> TestRetestData | None:
     """Average runs within each session and build test/retest matrix arrays.
 
     Args:
@@ -33,7 +43,7 @@ def _build_test_retest(
         mat_col: column holding the flat matrix arrays.
 
     Returns:
-        (subs, test, retest) where:
+        TestRetestData(subs, test, retest) where:
             subs: list of subject IDs with >= 2 sessions
             test: shape (n_subs, n_edges), session-1 averaged matrices
             retest: shape (n_subs, n_edges), session-2 averaged matrices
@@ -43,21 +53,25 @@ def _build_test_retest(
         run_df.groupby(["sub", "ses"])[mat_col]
         .apply(lambda x: np.mean(np.stack(x.values), axis=0))
         .reset_index()
+        .sort_values(["sub", "ses"])
     )
 
-    subs = [s for s, g in ses_avg.groupby("sub") if len(g) >= 2]
-    if len(subs) < 2:
+    sub_counts = ses_avg.groupby("sub").size()
+    valid_subs = sub_counts[sub_counts >= 2].index
+    if len(valid_subs) < 2:
         return None
+    
+    filtered = ses_avg[ses_avg["sub"].isin(valid_subs)]
 
     test = np.stack([
-        ses_avg[ses_avg["sub"] == s].sort_values("ses").iloc[0][mat_col]
-        for s in subs
+        filtered[filtered["sub"] == s].iloc[0][mat_col]
+        for s in valid_subs
     ])
     retest = np.stack([
-        ses_avg[ses_avg["sub"] == s].sort_values("ses").iloc[1][mat_col]
-        for s in subs
+        filtered[filtered["sub"] == s].iloc[1][mat_col]
+        for s in valid_subs
     ])
-    return subs, test, retest
+    return TestRetestData(subs=list(valid_subs), test=test, retest=retest)
 
 # ------------------------------------------------------------------
 # ICC
@@ -81,21 +95,18 @@ def build_icc_input(
     Returns:
         Array of shape (n_edges, n_subs, n_runs).
     """
-    subs = sorted(run_df["sub"].unique())
-    n_edges = len(run_df[mat_col].iloc[0])
-    n_runs = int(run_df.groupby("sub").size().max())
+    df = run_df.sort_values(["sub", "ses", "run"]).reset_index(drop=True)
+    subs = df["sub"].unique()
+    n_edges = len(df[mat_col].iloc[0])
+    n_runs = int(df.groupby("sub").size().max())
  
     icc_input = np.full((n_edges, len(subs), n_runs), np.nan)
-    for i, sub in enumerate(subs):
-        sub_rows = (
-            run_df[run_df["sub"] == sub]
-            .sort_values(["ses", "run"])
-            .reset_index(drop=True)
-        )
-        for j, (_, row) in enumerate(sub_rows.iterrows()):
-            if j >= n_runs:
-                break
-            icc_input[:, i, j] = row[mat_col]
+    
+    sub_codes, _ = pd.factorize(df["sub"], sort=False)
+    run_idx = df.groupby("sub", sort=False).cumcount().values
+
+    mats = np.stack(df[mat_col].values)
+    icc_input[:, sub_codes, run_idx] = mats.T
  
     return icc_input
  
@@ -121,12 +132,15 @@ def compute_icc(
     Returns:
         ``ICCResult`` named tuple (icc1 … icc3k), each an array over edges.
     """
-    df = run_df.copy()
     if sparsity is not None:
-        df[mat_col] = df[mat_col].apply(
+        transformed = run_df[mat_col].apply(
             lambda m: apply_sparsity(np.asarray(m), is_symmetric=is_symmetric, sparsity=sparsity)
         )
-    icc_input = build_icc_input(df, mat_col=mat_col)
+        effective_df = run_df.assign(**{mat_col: transformed})
+    else:
+        effective_df = run_df
+
+    icc_input = build_icc_input(effective_df, mat_col=mat_col)
     return batch_icc(icc_input)
 
 # ------------------------------------------------------------------
@@ -142,7 +156,7 @@ def _gradient_sim_one_sub(
 ) -> dict:
     """Compute mean pairwise gradient similarity for a single subject."""
     if len(mats) < 2:
-        return {"sub": sub, "gradient_similarity": float("nan")}
+        return {"sub": sub, "gradient_similarity": np.nan}
 
     gradients = []
     for mat in mats:
@@ -152,11 +166,15 @@ def _gradient_sim_one_sub(
             grad = fit_gradients(aff, n_components=n_components)
             gradients.append(grad)
         except Exception:
-            # skip this run if eigenmaps fails (e.g. isolated nodes after thresholding)
+            logger.warning(
+                "Gradient computation failed for subject %s; skipping run.",
+                sub,
+                exc_info=True,
+            )
             continue
 
     if len(gradients) < 2:
-        return {"sub": sub, "gradient_similarity": float("nan")}
+        return {"sub": sub, "gradient_similarity": np.nan}
 
     sims = [
         calc_gradient_similarity(g1, g2)
@@ -188,16 +206,14 @@ def compute_gradient_reliability(
     Returns:
         DataFrame with columns [sub, gradient_similarity].
     """
-    rows = []
-    for sub, grp in run_df.groupby("sub"):
-        mats = grp[mat_col].tolist()
-        rows.append(
-            _gradient_sim_one_sub(
-                sub, mats,
-                affinity_threshold=affinity_threshold,
-                n_components=n_components,
-            )
+    rows = [
+        _gradient_sim_one_sub(
+            sub, grp[mat_col].tolist(),
+            affinity_threshold=affinity_threshold,
+            n_components=n_components,
         )
+        for sub, grp in run_df.groupby("sub")
+    ]
     return pd.DataFrame(rows)
 
 # ------------------------------------------------------------------
@@ -232,34 +248,31 @@ def compute_identifiability(
     Returns:
         Dict with keys: I_self, I_others, I_diff, success_rate, identifiability_matrix (NxN array).
     """
-    df = run_df.copy()
     if sparsity is not None:
-        df[mat_col] = df[mat_col].apply(
+        transformed = run_df[mat_col].apply(
             lambda m: apply_sparsity(np.asarray(m), is_symmetric=is_symmetric, sparsity=sparsity)
         )
+        effective_df = run_df.assign(**{mat_col: transformed})
+    else:
+        effective_df = run_df
 
-    result = _build_test_retest(df, mat_col=mat_col)
+    result = _build_test_retest(effective_df, mat_col=mat_col)
     if result is None:
         return {"I_self": np.nan, "I_others": np.nan, "I_diff": np.nan,
                 "identifiability_matrix": None, "success_rate": np.nan}
 
     subs, test, retest = result
 
-    def _zscore(X: np.ndarray) -> np.ndarray:
-        mu = X.mean(axis=1, keepdims=True)
-        sd = X.std(axis=1, keepdims=True)
-        return np.where(sd > 0, (X - mu) / sd, 0.0)
-
     # N×N Pearson correlation matrix between all test/retest pairs
-    A = _zscore(test) @ _zscore(retest).T / test.shape[1]
+    A = zscore(test, axis=1) @ zscore(retest, axis=1).T / test.shape[1]
     A = np.clip(A, -1, 1)
 
-    I_self = float(np.mean(np.diag(A)))
+    I_self = np.mean(np.diag(A))
     mask_off = ~np.eye(len(subs), dtype=bool)
-    I_others = float(np.mean(A[mask_off]))
+    I_others = np.mean(A[mask_off])
     I_diff = (I_self - I_others) * 100
 
-    success_rate = float(np.mean(np.argmax(A, axis=0) == np.arange(len(subs))))
+    success_rate = np.mean(np.argmax(A, axis=0) == np.arange(len(subs)))
 
     return {
         "I_self": I_self,
@@ -313,7 +326,7 @@ def compute_discriminability(
 
     result = _build_test_retest(df, mat_col=mat_col)
     if result is None:
-        return float("nan")
+        return np.nan
 
     subs, test, retest = result
     n = len(subs)
@@ -325,19 +338,20 @@ def compute_discriminability(
 
     for start in range(0, n, chunk_size):
         end = min(start + chunk_size, n)
+        chunk = slice(start, end)
+        chunk_n = end - start
 
-        # D_chunk[i, j] = ||test[start:end][i] - retest[j]||
-        diff = test[start:end, np.newaxis, :] - retest[np.newaxis, :, :]
-        D_chunk = np.linalg.norm(diff, axis=2)  # (chunk_size, n)
+        diff = test[chunk, np.newaxis, :] - retest[np.newaxis, :, :]
+        D_chunk = np.linalg.norm(diff, axis=2)
 
-        for local_i, global_i in enumerate(range(start, end)):
-            for j in range(n):
-                if global_i == j:
-                    continue
-                if d_within[global_i] < D_chunk[local_i, j]:
-                    correct += 1.0
-                elif d_within[global_i] == D_chunk[local_i, j]:
-                    correct += 0.5
-                total += 1
+        # mask out self-comparisons
+        global_idx = np.arange(start, end)
+        self_mask = global_idx[:, np.newaxis] == np.arange(n)[np.newaxis, :]
 
-    return float(correct / total) if total > 0 else float("nan")
+        d_within_chunk = d_within[chunk, np.newaxis]
+
+        correct += np.sum((D_chunk > d_within_chunk) & ~self_mask, dtype=float)
+        correct += 0.5 * np.sum((D_chunk == d_within_chunk) & ~self_mask, dtype=float)
+        total += chunk_n * (n - 1)
+
+    return float(correct / total) if total > 0 else np.nan
