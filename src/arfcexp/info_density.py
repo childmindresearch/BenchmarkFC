@@ -28,6 +28,10 @@ from scipy.stats import entropy
 from arfcexp.graph_metrics import sparse_directed_graph, sparse_undirected_graph, _extract_triangle_as_symmetric
 from arfcexp.matrices import import_matrix
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def compute_sve(matrix: np.ndarray) -> float:
     """Singular value entropy.
@@ -47,7 +51,7 @@ def compute_sve(matrix: np.ndarray) -> float:
     if S.size == 0:
         return 0.0
     p = S / S.sum()
-    return float(entropy(p, base=2))
+    return entropy(p, base=2)
 
 
 def compute_stable_rank(matrix: np.ndarray, eps: float = 1e-12) -> float:
@@ -63,8 +67,8 @@ def compute_stable_rank(matrix: np.ndarray, eps: float = 1e-12) -> float:
         Stable rank (≥ 1).
     """
     A = import_matrix(matrix)
-    frob_sq = float(np.linalg.norm(A, ord="fro") ** 2)
-    spec_sq = float(np.linalg.norm(A, ord=2) ** 2)
+    frob_sq = np.linalg.norm(A, ord="fro") ** 2
+    spec_sq = np.linalg.norm(A, ord=2) ** 2
     return frob_sq / spec_sq if spec_sq > eps else 0.0
 
 
@@ -130,13 +134,13 @@ def compute_rich_club(
     if ks.size == 0:
         return RichClubResult(np.nan, np.nan, np.nan, np.nan, rc)
  
-    auc = float(np.trapz(vals, ks))
-    k_at_max = float(ks[int(np.argmax(vals))])
+    auc = np.trapz(vals, ks)
+    k_at_max = ks[np.argmax(vals)]
     sig_mask = vals > sig_thr
-    sig_k_range = float(ks[sig_mask].max() - ks[sig_mask].min()) if sig_mask.any() else 0.0
-    mean_rho = float(np.mean(vals))
- 
-    return RichClubResult(auc, k_at_max, sig_k_range, mean_rho, rc)
+    sig_k_range = ks[sig_mask].max() - ks[sig_mask].min() if sig_mask.any() else 0.0
+    mean_rho = np.mean(vals)
+
+    return RichClubResult(float(auc), float(k_at_max), float(sig_k_range), float(mean_rho), rc)
 
 
 def compute_small_worldness(
@@ -177,14 +181,15 @@ def compute_small_worldness(
     if density < min_density:
         return np.nan
     
-    if use_lcc and not nx.is_connected(G):
-        G = G.subgraph(max(nx.connected_components(G), key=len)).copy()
+    components = list(nx.connected_components(G))
+    if use_lcc and len(components) > 1:
+        G = G.subgraph(max(components, key=len)).copy()
  
     C = nx.transitivity(G)
     L = nx.average_shortest_path_length(G)
 
     # Scale nswap to the actual edge count
-    actual_nswap = min(nswap, G.number_of_edges() // 2) 
+    actual_nswap = min(nswap, G.number_of_edges() // 2)
     if actual_nswap < 10:
         return np.nan
  
@@ -192,15 +197,16 @@ def compute_small_worldness(
     Crs, Lrs = [], []
     for _ in range(nrand):
         Gr = G.copy()
-        try:  # ADD TRY/EXCEPT — catches the swap warning as a raised error if ever rethrown
+        try:
             nx.double_edge_swap(
-                Gr, nswap=actual_nswap, max_tries=actual_nswap * 20, 
+                Gr, nswap=actual_nswap, max_tries=actual_nswap * 20,
                 seed=int(rng.integers(0, 2 ** 31 - 1)),
             )
         except nx.NetworkXAlgorithmError:
             continue
-        if use_lcc and not nx.is_connected(Gr):
-            Gr = Gr.subgraph(max(nx.connected_components(Gr), key=len)).copy()
+        components = list(nx.connected_components(Gr))
+        if use_lcc and len(components) > 1:
+            Gr = Gr.subgraph(max(components, key=len)).copy()
         if Gr.number_of_nodes() < 3 or Gr.number_of_edges() == 0:
             continue
         Crs.append(nx.transitivity(Gr))
@@ -209,11 +215,11 @@ def compute_small_worldness(
     if not Crs:
         return np.nan
  
-    Cr, Lr = float(np.mean(Crs)), float(np.mean(Lrs))
+    Cr, Lr = np.mean(Crs), np.mean(Lrs)
     if Cr == 0 or L == 0 or Lr == 0:
         return np.nan
  
-    return float((C / Cr) / (L / Lr))
+    return (C / Cr) / (L / Lr)
 
 
 def compute_tsp_cost(
@@ -244,9 +250,14 @@ def compute_tsp_cost(
     D = 1.0 - np.abs(W)
     G = nx.Graph()
     G.add_nodes_from(nodes)
-    for i_idx, i in enumerate(nodes):
-        for j in nodes[i_idx + 1:]:
-            G.add_edge(i, j, weight=max(float(D[i, j]), 0.0))
+    
+    rows, cols = np.triu_indices(n, k=1)
+    mask = np.isin(rows, nodes) & np.isin(cols, nodes)
+    edges = [
+        (int(i), int(j), max(float(D[i, j]), 0.0))
+        for i, j in zip(rows[mask], cols[mask])
+    ]
+    G.add_weighted_edges_from(edges)
  
     tour = traveling_salesman.traveling_salesman_problem(G, nodes=nodes, cycle=True)
     cost = sum(G[u][v]["weight"] for u, v in zip(tour, tour[1:]))
@@ -283,6 +294,10 @@ def compute_trophic_incoherence(
     try:
         return float(nx.trophic_incoherence_parameter(G, weight="weight"))
     except Exception:
+        logger.warning(
+            "Trophic incoherence computation failed; returning NaN.",
+            exc_info=True,
+        )
         return np.nan
     
 
@@ -291,7 +306,7 @@ def compute_core_depth(
     *,
     sparsity: float = 0.0,
     triangle: str = "upper",
-) -> float:
+) -> int:
     """Maximum k-core number of the sparse undirected graph.
  
     Higher values indicate a denser, more hierarchically organized core.
@@ -306,7 +321,7 @@ def compute_core_depth(
     """
     G, _, _ = sparse_undirected_graph(matrix, sparsity=sparsity, triangle=triangle)
     core_numbers = nx.core_number(G)
-    return float(max(core_numbers.values())) if core_numbers else 0.0
+    return max(core_numbers.values()) if core_numbers else 0.0
 
 # ---------------------------------------------------------------------------
 # Batch wrapper for all intrinsic metrics

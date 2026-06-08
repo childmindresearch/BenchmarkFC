@@ -10,11 +10,17 @@ import numpy as np
 from brainspace.gradient import LaplacianEigenmaps
 from sklearn.cluster import SpectralClustering
 from scipy.optimize import linear_sum_assignment
+from scipy.linalg import subspace_angles
+from sklearn.metrics import jaccard_score
+from typing import Literal, NamedTuple
 
 from arfcexp.matrices import import_matrix
  
  
-def _extract_triangle_as_symmetric(A: np.ndarray, triangle: str) -> np.ndarray:
+def _extract_triangle_as_symmetric(
+        A: np.ndarray, 
+        triangle: Literal["upper", "lower"]
+) -> np.ndarray:
     """Extract one triangle of A and mirror it to make a symmetric matrix.
  
     For an asymmetric matrix A[i,j] != A[j,i], the upper triangle captures
@@ -29,28 +35,35 @@ def _extract_triangle_as_symmetric(A: np.ndarray, triangle: str) -> np.ndarray:
     Returns:
         Symmetric matrix, shape (n, n).
     """
+    triangle = triangle.lower()
+    if triangle not in ("upper", "lower"):
+        raise ValueError(f"triangle must be 'upper' or 'lower', got {triangle!r}")
+
     n = A.shape[0]
     S = np.zeros((n, n))
-    iu = np.triu_indices(n, k=1)
+    row_idx, col_idx = np.triu_indices(n, k=1) 
+
     if triangle == "upper":
-        S[iu] = A[iu]
-    else:
-        # lower triangle: A[j, i] for each (i, j) pair where i < j
-        S[iu] = A[iu[1], iu[0]]
+        # use A[i, j] for each i < j pair
+        S[row_idx, col_idx] = A[row_idx, col_idx]
+    elif triangle == "lower":
+        # use A[j, i] for each i < j pair (i.e. the lower triangle values)
+        S[row_idx, col_idx] = A[col_idx, row_idx]
+
     return S + S.T
 
 def sparse_undirected_graph(
     matrix: np.ndarray,
     sparsity: float = 0.0,
-    triangle: str = "upper",
+    triangle: Literal["upper", "lower"] = "upper",
 ) -> tuple[nx.Graph, float, float]:
     """Build a sparse weighted undirected graph from one triangle of a matrix.
  
-     For symmetric matrices both triangles are identical so ``triangle`` has no
+    For symmetric matrices both triangles are identical so ``triangle`` has no
     effect. For asymmetric matrices, pass ``triangle="upper"`` or
     ``triangle="lower"`` to compute metrics on each direction separately.
 
-    Keeps the top ``(1 - sparsity)`` fraction of directed edges by absolute weight.
+    Keeps the top ``(1 - sparsity)`` fraction of edges by absolute weight.
  
     Args:
         matrix: connectivity matrix (flat or 2-D).
@@ -65,30 +78,31 @@ def sparse_undirected_graph(
     A = import_matrix(matrix)
     W = _extract_triangle_as_symmetric(A, triangle=triangle)
     n = W.shape[0]
- 
+
+    # number of edges to retain after sparsity thresholding (upper triangle only)
     m_keep = int(round((1.0 - sparsity) * n * (n - 1) // 2))
-    iu = np.triu_indices(n, k=1)
-    w_abs = np.abs(W[iu])
+    row_idx, col_idx = np.triu_indices(n, k=1)
+    w_abs = np.abs(W[row_idx, col_idx])
     valid = w_abs > 0
- 
+
     if m_keep <= 0 or not np.any(valid):
         return nx.empty_graph(n), np.inf, 0.0
- 
-    w_abs_valid = w_abs[valid]
-    if w_abs_valid.size <= m_keep:
+
+    candidate_weights = w_abs[valid]
+    if candidate_weights.size <= m_keep:
         selected = np.where(valid)[0]
-        abs_thr = float(w_abs_valid.min())
+        abs_thr = float(candidate_weights.min())
     else:
-        top_idx = np.argpartition(w_abs_valid, -m_keep)[-m_keep:]
+        top_idx = np.argpartition(candidate_weights, -m_keep)[-m_keep:]
         selected = np.where(valid)[0][top_idx]
-        abs_thr = float(w_abs_valid[top_idx].min())
- 
-    B = np.zeros((n, n))
-    ii, jj = iu[0][selected], iu[1][selected]
-    B[ii, jj] = W[ii, jj]
-    B[jj, ii] = W[jj, ii]
- 
-    G = nx.from_numpy_array(B)
+        abs_thr = float(candidate_weights[top_idx].min())
+
+    adj = np.zeros((n, n))
+    src, dst = row_idx[selected], col_idx[selected]
+    adj[src, dst] = W[src, dst]
+    adj[dst, src] = W[dst, src]
+
+    G = nx.from_numpy_array(adj)
     G.remove_edges_from(nx.selfloop_edges(G))
     return G, abs_thr, nx.density(G)
  
@@ -100,7 +114,11 @@ def sparse_directed_graph(
     """Build a sparse weighted directed graph from a connectivity matrix.
  
     Keeps the top ``(1 - sparsity)`` fraction of directed edges by absolute weight.
- 
+
+    Args:
+        matrix: connectivity matrix (flat or 2-D).
+        sparsity: fraction of edges to zero out (default 0.0)
+
     Returns:
         G: weighted directed NetworkX graph
         abs_thr: absolute weight threshold applied
@@ -108,29 +126,33 @@ def sparse_directed_graph(
     """
     A = import_matrix(matrix)
     n = A.shape[0]
- 
+
+    # number of directed edges to retain (all ordered pairs, excluding diagonal)
     m_keep = int(round((1.0 - sparsity) * n * (n - 1)))
-    ii, jj = np.where(~np.eye(n, dtype=bool))
-    w_abs = np.abs(A[ii, jj])
+
+    # mask out the diagonal to get all off-diagonal (i, j) index pairs
+    # these are all possible directed edges in the graph
+    row_idx, col_idx = np.where(~np.eye(n, dtype=bool))
+    w_abs = np.abs(A[row_idx, col_idx])
     valid = w_abs > 0
- 
+
     if m_keep <= 0 or not np.any(valid):
         return nx.empty_graph(n, create_using=nx.DiGraph), np.inf, 0.0
- 
-    w_abs_valid = w_abs[valid]
-    if w_abs_valid.size <= m_keep:
+
+    candidate_weights = w_abs[valid]
+    if candidate_weights.size <= m_keep:
         selected = np.where(valid)[0]
-        abs_thr = float(w_abs_valid.min())
+        abs_thr = float(candidate_weights.min())
     else:
-        top_idx = np.argpartition(w_abs_valid, -m_keep)[-m_keep:]
+        top_idx = np.argpartition(candidate_weights, -m_keep)[-m_keep:]
         selected = np.where(valid)[0][top_idx]
-        abs_thr = float(w_abs_valid[top_idx].min())
- 
-    B = np.zeros((n, n))
-    si, sj = ii[selected], jj[selected]
-    B[si, sj] = A[si, sj]
- 
-    G = nx.from_numpy_array(B, create_using=nx.DiGraph)
+        abs_thr = float(candidate_weights[top_idx].min())
+
+    adj = np.zeros((n, n))
+    src, dst = row_idx[selected], col_idx[selected]
+    adj[src, dst] = A[src, dst]
+
+    G = nx.from_numpy_array(adj, create_using=nx.DiGraph)
     G.remove_edges_from(nx.selfloop_edges(G))
     return G, abs_thr, nx.density(G)
 
@@ -188,11 +210,8 @@ def calc_gradient_similarity(grad1: np.ndarray, grad2: np.ndarray) -> float:
     Returns:
         Gradient similarity score.
     """
-    grad1, _ = np.linalg.qr(grad1)
-    grad2, _ = np.linalg.qr(grad2)
-    crossdot = grad1.T @ grad2
-    s = np.linalg.svd(crossdot, compute_uv=False)
-    return np.mean(s**2)
+    angles = subspace_angles(grad1, grad2)
+    return np.mean(np.cos(angles) ** 2)
 
 
 def calc_affinity_iou(aff1: np.ndarray, aff2: np.ndarray):
@@ -200,10 +219,9 @@ def calc_affinity_iou(aff1: np.ndarray, aff2: np.ndarray):
 
     Note, the matrices should be sparse and non-negative.
     """
-    mask1 = aff1 > 0
-    mask2 = aff2 > 0
-    iou = np.sum(mask1 & mask2) / np.sum(mask1 | mask2)
-    return iou
+    mask1 = (aff1 > 0).ravel()
+    mask2 = (aff2 > 0).ravel()
+    return jaccard_score(mask1, mask2)
 
 
 def fit_clustering(aff: np.ndarray, n_clusters: int = 7) -> np.ndarray:
