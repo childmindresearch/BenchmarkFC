@@ -1,5 +1,8 @@
 .DS_Store
 
+# Environment variables (use .env.example as template)
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
