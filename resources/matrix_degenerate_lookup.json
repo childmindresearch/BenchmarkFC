@@ -159,5 +159,14 @@
   "skarf__linear_pls": false,
   "skarf__linear_ridge": false,
   "skarf__prec_empirical": false,
-  "skarf__prec_graphicallasso": false
+  "skarf__prec_graphicallasso": false,
+  "ensemble__top5_simple_average": false,
+  "ensemble__top5_weighted_average": false,
+  "ensemble__top5_reference_decoder": false,
+  "ensemble__top10_simple_average": false,
+  "ensemble__top10_weighted_average": false,
+  "ensemble__top10_reference_decoder": false,
+  "ensemble__top15_simple_average": false,
+  "ensemble__top15_weighted_average": false,
+  "ensemble__top15_reference_decoder": false
 }

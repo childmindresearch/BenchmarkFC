@@ -4,3 +4,6 @@
 [submodule "submodules/yaspy"]
 	path = submodules/yaspy
 	url = git@github.com:childmindresearch/yaspy.git
+[submodule "submodules/krakencoder"]
+	path = submodules/krakencoder
+	url = https://github.com/kjamison/krakencoder.git

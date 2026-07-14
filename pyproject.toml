@@ -13,8 +13,10 @@ dependencies = [
     "brainspace==0.1.20",
     "datasets==3.4.0",
     "fire==0.7.0",
+    "h5py",
     "ipython",
     "jupyter",
+    "krakencoder",
     "matplotlib==3.10.1",
     "neuromaps",
     "nibabel==5.3.2",
@@ -23,6 +25,7 @@ dependencies = [
     "numpy==1.26.4",
     "pandas==2.2.3",
     "pip>=25.0.1",
+    "platformdirs",
     "polars>=1.35.2",
     "pre-commit>=4.1.0",
     "pyspi==1.1.1",
@@ -31,8 +34,10 @@ dependencies = [
     "rust-just==1.40.0",
     "scikit-learn==1.6.1",
     "scipy==1.15.2",
+    "seaborn",
     "skarf",
     "statsmodels==0.14.4",
+    "torch>=2.7.0",
     "tqdm>=4.66.0",
     "typer>=0.15.3",
     "yaspy",
@@ -41,8 +46,15 @@ dependencies = [
 [tool.uv.sources]
 skarf = { path = "submodules/skarf", editable = true }
 yaspy = { path = "submodules/yaspy", editable = true }
+krakencoder = { path = "submodules/krakencoder", editable = true }
 nisc = { git = "https://github.com/clane9/nisc.git", rev = "667f98814b63fecbb158b7a96b8e6f7dbebb0eb2" }
 neuromaps = { git = "https://github.com/netneurolab/neuromaps.git", tag = "0.0.5" }
+torch = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [tool.uv]
 config-settings = { editable_mode = "compat" }

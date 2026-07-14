@@ -362,6 +362,119 @@ class EfficientMatrixReader:
             for indices in query_row_indices
         ]
 
+    def batch_query(
+        self,
+        queries: list[dict],
+        columns: list[str] | None = None,
+        limit: int | None = None,
+        max_workers: int = 8,
+        compact_mat: bool = True,
+    ) -> list[pl.DataFrame]:
+        """Like :meth:`query`, but for multiple filter dicts in a single parquet pass.
+
+        :meth:`query` is convenient for one filter at a time, but calling it
+        repeatedly (once per method/func/lag combo) re-reads the same row
+        groups from scratch for every call whenever different combos' rows
+        are scattered across the same row groups - this is the same "naive"
+        slow path that :meth:`batch_get_matrices` was written to avoid, just
+        for full-column queries (e.g. ``[sub, ses, run, mat]``) instead of
+        bare matrices.
+
+        Parameters
+        ----------
+        queries : list[dict]
+            List of filter dicts, each matching the ``**filters`` signature of
+            :meth:`query` (e.g. ``[{"method": "pyspi", "func": "...", "success": True}, ...]``).
+        columns : list[str] | None
+            Data columns to retrieve (e.g. ``["sub", "ses", "run", "mat"]``).
+            Defaults to ``["mat"]``.
+        limit : int | None
+            Maximum rows per query. *None* returns all matches.
+        max_workers : int
+            Number of threads for parallel row group reads (default 8).
+        compact_mat : bool
+            If a ``mat`` column is requested, convert each entry to a compact
+            float32 numpy array immediately during the row-group read instead
+            of leaving it as a Python list of boxed floats (default True).
+            Disable only if exact float64 precision or a plain-list return
+            type is required.
+
+        Returns
+        -------
+        list[pl.DataFrame]
+            One DataFrame per query (requested columns + index columns),
+            preserving input order.
+        """
+        if columns is None:
+            columns = ["mat"]
+
+        self._build_index()
+        assert self._index_df is not None
+
+        filtered_list: list[pl.DataFrame] = []
+        all_needed: set[int] = set()
+        for query_filters in queries:
+            filtered = self._apply_filters(self._index_df, **query_filters)
+            if limit is not None:
+                filtered = filtered.limit(limit)
+            filtered_list.append(filtered)
+            all_needed.update(filtered.select("index").to_series().to_list())
+
+        if not all_needed:
+            empty_cols = {c: pl.Series([], dtype=pl.Utf8) for c in columns}
+            return [pl.DataFrame(empty_cols) for _ in queries]
+
+        rg_rows: dict[int, list[tuple[int, int]]] = {}
+        for global_idx in all_needed:
+            rg_idx, local_idx = self._find_row_group(global_idx)
+            rg_rows.setdefault(rg_idx, []).append((local_idx, global_idx))
+
+        logger.info(
+            "Batch query: %d queries → %d unique rows across %d row groups",
+            len(queries),
+            len(all_needed),
+            len(rg_rows),
+        )
+
+        parquet_path = self.parquet_path
+
+        def _read_rg(rg_idx: int) -> dict[int, dict]:
+            pf = pq.ParquetFile(parquet_path)
+            table = pf.read_row_group(rg_idx, columns=columns)
+            out: dict[int, dict] = {}
+            for local_idx, global_idx in rg_rows[rg_idx]:
+                row = {}
+                for col in columns:
+                    value = table[col][local_idx].as_py()
+                    # Convert the flattened matrix column to a compact float32
+                    # array immediately rather than leaving it as a Python list
+                    # of boxed floats - with tens of thousands of rows cached
+                    # across many queries, boxed-float lists inflate memory
+                    # ~8x and can spike RSS by tens of GB.
+                    if compact_mat and col == "mat" and value is not None:
+                        value = np.asarray(value, dtype=np.float32)
+                    row[col] = value
+                out[global_idx] = row
+            return out
+
+        row_cache: dict[int, dict] = {}
+        if max_workers == 1:
+            for rg_idx in sorted(rg_rows.keys()):
+                row_cache.update(_read_rg(rg_idx))
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as exe:
+                futures = {exe.submit(_read_rg, rg_idx): rg_idx for rg_idx in sorted(rg_rows.keys())}
+                for future in concurrent.futures.as_completed(futures):
+                    row_cache.update(future.result())
+
+        results = []
+        for filtered in filtered_list:
+            index_rows = filtered.to_dicts()
+            for idx_row in index_rows:
+                idx_row.update(row_cache.get(idx_row["index"], {}))
+            results.append(pl.DataFrame(index_rows))
+        return results
+
 
 def load_symmetry_lookup(project_root: Path | None = None) -> dict:
     """Load symmetry lookup dictionary from JSON file.

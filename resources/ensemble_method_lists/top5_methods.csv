@@ -1,0 +1,6 @@
+rank,method,func,lag,combo_key,is_directed,family,display_name,maxnorm_rank_sum,maxnorm_rank_order
+1,skarf,linear_pca-ridge,0,skarf__linear_pca-ridge__lag-0,True,skarf,skarf lin:pca-ridge lag 0,3.3679050015817733,1
+2,skarf,linear_ridge,0,skarf__linear_ridge__lag-0,True,skarf,skarf lin:ridge lag 0,3.244579685897927,2
+3,skarf,linear_enet,0,skarf__linear_enet__lag-0,True,skarf,skarf lin:enet lag 0,3.2248413423617506,3
+4,skarf,linear_ridge,1,skarf__linear_ridge__lag-1,True,skarf,skarf lin:ridge lag 1,3.200626473782895,4
+5,skarf,prec_graphicallasso,0,skarf__prec_graphicallasso__lag-0,True,skarf,skarf prec:graphicallasso lag 0,3.197498094098846,5

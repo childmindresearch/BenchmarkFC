@@ -1,6 +1,9 @@
-"""Evaluate homotopic FC across PySPI and skarf methods on HCP-1200.
+"""Evaluate network-block homotopic FC across PySPI and skarf methods on HCP-1200.
 
-Compares mean/median homotopic FC strength using Schaefer parcellation ordering.
+The primary subject-level outputs are Schaefer-7 summaries computed from all
+within-network cross-hemisphere edges. A derived overall observed summary is the
+equal-weight mean of those seven network scores. The empirical reference is a
+deterministic between-network cross-hemisphere contrast.
 """
 
 import json
@@ -13,18 +16,24 @@ import pandas as pd
 import scipy.stats
 import typer
 import yaml
-from sklearn.utils import check_random_state
 
+from arfcexp.benchmark_utils import infer_combo_is_directed, load_combinations, make_combo_key
 from arfcexp.homotopy import (
-    summarize_heterotopic_null_fc_ranked,
-    summarize_homotopic_fc_ranked,
-    validate_schaefer_homotopic_pairs,
+    OVERALL_NETWORK_LABEL,
+    get_schaefer_between_network_edges,
+    get_schaefer_network_order,
+    get_schaefer_overall_between_network_edges,
+    get_schaefer_within_network_edges,
+    rank_matrix_offdiagonal,
+    summarize_between_network_reference_ranked_edges,
+    summarize_homotopic_fc_ranked_edges,
 )
 from arfcexp.matrices import (
     EfficientMatrixReader,
     load_avg_mats_and_impose_sparsity,
     load_symmetry_lookup,
 )
+
 
 logging.basicConfig(
     format="[%(levelname)s %(asctime)s]: %(message)s",
@@ -33,70 +42,22 @@ logging.basicConfig(
 )
 
 MIN_VALID_SUB_FRACTION = 0.9
+ANALYSIS_LEVEL_NETWORK = "network"
+ANALYSIS_LEVEL_OVERALL = "overall"
+ANALYSIS_TAG = "networkblock-v2"
 
-
-def infer_combo_is_directed(
-    *,
-    method: str,
-    func: str,
-    symmetry_lookup: dict[str, bool],
-) -> bool:
-    """Infer whether a method/function pair should be treated as directed.
-
-    Directionality is derived strictly from matrix_symmetry_lookup.json.
-    """
-    key = f"{method}__{func}"
-    if key not in symmetry_lookup:
-        raise KeyError(
-            f"Missing symmetry lookup key: {key}. "
-            "Please update resources/matrix_symmetry_lookup.json before running."
-        )
-    return not bool(symmetry_lookup[key])
-
-
-def load_method_func_pairs(method_func_path: Path) -> list[tuple[str, str]]:
-    """Load method/function pairs from the standard tab-separated resource file."""
-    base_pairs: list[tuple[str, str]] = []
-    with method_func_path.open() as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            parts = line.split("\t")
-            if len(parts) != 2:
-                raise ValueError(f"Invalid line in method/function list: {line!r}")
-            method_i, func_i = parts
-            base_pairs.append((method_i, func_i))
-    return base_pairs
-
-
-def load_combinations(
-    method_func_path: Path,
-    degenerate_lookup_path: Path,
-    *,
-    include_skarf_lag1: bool,
-    method: str | None = None,
-    func: str | None = None,
-    lag: int = 0,
-    max_combos: int | None = None,
-) -> tuple[list[dict], list[dict]]:
-    """Load, expand, and optionally filter benchmark combinations."""
-    base_pairs = load_method_func_pairs(method_func_path)
-
-    with degenerate_lookup_path.open() as f:
-        degenerate_lookup = json.load(f)
-
-    combos, excluded = build_combinations(
-        base_pairs,
-        degenerate_lookup,
-        include_skarf_lag1=include_skarf_lag1,
-    )
-    combos = select_combinations(combos, method=method, func=func, lag=lag)
-
-    if max_combos is not None:
-        combos = combos[:max_combos]
-
-    return combos, excluded
+REFERENCE_COLUMNS = (
+    "between_network_reference_mean",
+    "between_network_reference_std",
+    "between_network_reference_q25",
+    "between_network_reference_q75",
+    "between_network_reference_mean_upper",
+    "between_network_reference_mean_lower",
+    "between_network_reference_q25_upper",
+    "between_network_reference_q75_upper",
+    "between_network_reference_q25_lower",
+    "between_network_reference_q75_lower",
+)
 
 
 def build_output_dir(
@@ -108,9 +69,6 @@ def build_output_dir(
     include_skarf_lag1: bool,
     n_subjects: int | None,
     max_combos: int | None,
-    perm_test: bool,
-    seed: int,
-    n_perm: int,
     method: str | None,
     func: str | None,
     lag: int,
@@ -124,34 +82,198 @@ def build_output_dir(
         selector_tag = f"selector-{method}__{func}__lag-{selector_lag}"
 
     return out_dir / (
-        f"parc-{parc_size}__reducer-{reducer}__rankabs-{int(use_abs)}"
-        f"__skarf-lag1-{int(include_skarf_lag1)}__{sub_tag}__{combo_tag}"
-        f"__perm-{int(perm_test)}__seed-{seed}__nperm-{n_perm}"
-        f"__{selector_tag}"
+        f"parc-{parc_size}__analysis-{ANALYSIS_TAG}__reducer-{reducer}"
+        f"__rankabs-{int(use_abs)}__skarf-lag1-{int(include_skarf_lag1)}"
+        f"__{sub_tag}__{combo_tag}__reference-betweennetwork__{selector_tag}"
     )
 
 
-def build_empty_homotopic_summary() -> dict[str, float]:
+def build_empty_homotopic_summary(is_directed: bool) -> dict[str, float | bool]:
     return {
         "homotopic_score": np.nan,
         "homotopic_score_upper": np.nan,
         "homotopic_score_lower": np.nan,
+        "is_directed": bool(is_directed),
     }
 
 
-def build_empty_null_summary() -> dict[str, float]:
+def build_empty_reference_summary(is_directed: bool) -> dict[str, float | bool]:
+    out: dict[str, float | bool] = {key: np.nan for key in REFERENCE_COLUMNS}
+    out["is_directed"] = bool(is_directed)
+    return out
+
+
+def _safe_nanmean(values: list[float]) -> float:
+    arr = np.asarray(values, dtype=np.float64)
+    return float(np.nanmean(arr)) if np.isfinite(arr).any() else np.nan
+
+
+def average_network_summaries(
+    summaries: list[dict[str, float | bool]],
+    *,
+    is_directed: bool,
+) -> dict[str, float | bool]:
+    """Average network-level observed summaries into one overall record."""
     return {
-        "heterotopic_null_mean": np.nan,
-        "heterotopic_null_std": np.nan,
-        "heterotopic_null_q25": np.nan,
-        "heterotopic_null_q75": np.nan,
-        "heterotopic_null_mean_upper": np.nan,
-        "heterotopic_null_mean_lower": np.nan,
-        "heterotopic_null_q25_upper": np.nan,
-        "heterotopic_null_q75_upper": np.nan,
-        "heterotopic_null_q25_lower": np.nan,
-        "heterotopic_null_q75_lower": np.nan,
+        "homotopic_score": _safe_nanmean([float(summary["homotopic_score"]) for summary in summaries]),
+        "homotopic_score_upper": (
+            _safe_nanmean([float(summary["homotopic_score_upper"]) for summary in summaries])
+            if is_directed
+            else np.nan
+        ),
+        "homotopic_score_lower": (
+            _safe_nanmean([float(summary["homotopic_score_lower"]) for summary in summaries])
+            if is_directed
+            else np.nan
+        ),
+        "is_directed": bool(is_directed),
     }
+
+
+def _finite_diff(a: float, b: float) -> float:
+    return float(a - b) if np.isfinite(a) and np.isfinite(b) else np.nan
+
+
+def build_score_record(
+    *,
+    sub: str,
+    method: str,
+    func: str,
+    lag: int,
+    combo_key: str,
+    analysis_level: str,
+    network: str,
+    n_crosshemi_edges: int,
+    n_between_network_edges: int,
+    n_networks_aggregated: int,
+    run_count: int,
+    summary: dict[str, float | bool],
+    reference_summary: dict[str, float | bool],
+    is_directed: bool,
+) -> dict[str, object]:
+    score = float(summary["homotopic_score"])
+    score_upper = float(summary["homotopic_score_upper"])
+    score_lower = float(summary["homotopic_score_lower"])
+    reference_mean = float(reference_summary["between_network_reference_mean"])
+    reference_mean_upper = float(reference_summary["between_network_reference_mean_upper"])
+    reference_mean_lower = float(reference_summary["between_network_reference_mean_lower"])
+
+    return {
+        "sub": sub,
+        "method": method,
+        "func": func,
+        "lag": lag,
+        "combo_key": combo_key,
+        "analysis_level": analysis_level,
+        "network": network,
+        "n_crosshemi_edges": n_crosshemi_edges,
+        "n_between_network_edges": n_between_network_edges,
+        "n_networks_aggregated": n_networks_aggregated,
+        "run_count": run_count,
+        "homotopic_score": score,
+        "homotopic_score_upper": score_upper,
+        "homotopic_score_lower": score_lower,
+        **{key: float(reference_summary[key]) for key in REFERENCE_COLUMNS},
+        "within_minus_between": _finite_diff(score, reference_mean),
+        "within_minus_between_upper": _finite_diff(score_upper, reference_mean_upper),
+        "within_minus_between_lower": _finite_diff(score_lower, reference_mean_lower),
+        "reference_type": "between_network_crosshemisphere",
+        "is_directed": is_directed,
+    }
+
+
+def _summarize_values(values: np.ndarray) -> dict[str, float | int]:
+    finite = np.isfinite(values)
+    return {
+        "n_finite": int(finite.sum()),
+        "mean": float(np.nanmean(values)) if np.any(finite) else np.nan,
+        "median": float(np.nanmedian(values)) if np.any(finite) else np.nan,
+        "std": float(np.nanstd(values, ddof=1)) if finite.sum() > 1 else np.nan,
+        "q25": float(np.nanpercentile(values, 25)) if np.any(finite) else np.nan,
+        "q75": float(np.nanpercentile(values, 75)) if np.any(finite) else np.nan,
+    }
+
+
+def summarize_combo_scores(
+    score_records: list[dict[str, object]],
+    *,
+    method: str,
+    func: str,
+    lag: int,
+    combo_key: str,
+    is_directed: bool,
+    valid_fraction: float,
+) -> list[dict[str, object]]:
+    """Aggregate subject-level rows into method summaries per analysis level."""
+    if not score_records:
+        return []
+
+    scores_df = pd.DataFrame(score_records)
+    summary_records = []
+    for (analysis_level, network), group in scores_df.groupby(
+        ["analysis_level", "network"],
+        sort=False,
+    ):
+        values = group["homotopic_score"].to_numpy(dtype=np.float64)
+        values_upper = group["homotopic_score_upper"].to_numpy(dtype=np.float64)
+        values_lower = group["homotopic_score_lower"].to_numpy(dtype=np.float64)
+        reference_values = group["between_network_reference_mean"].to_numpy(dtype=np.float64)
+        reference_upper = group["between_network_reference_mean_upper"].to_numpy(dtype=np.float64)
+        reference_lower = group["between_network_reference_mean_lower"].to_numpy(dtype=np.float64)
+        delta_values = group["within_minus_between"].to_numpy(dtype=np.float64)
+        delta_upper = group["within_minus_between_upper"].to_numpy(dtype=np.float64)
+        delta_lower = group["within_minus_between_lower"].to_numpy(dtype=np.float64)
+
+        observed = _summarize_values(values)
+        observed_upper = _summarize_values(values_upper)
+        observed_lower = _summarize_values(values_lower)
+        reference = _summarize_values(reference_values)
+        reference_upper_summary = _summarize_values(reference_upper)
+        reference_lower_summary = _summarize_values(reference_lower)
+        delta = _summarize_values(delta_values)
+        delta_upper_summary = _summarize_values(delta_upper)
+        delta_lower_summary = _summarize_values(delta_lower)
+
+        summary_records.append(
+            {
+                "method": method,
+                "func": func,
+                "lag": lag,
+                "combo_key": combo_key,
+                "analysis_level": analysis_level,
+                "network": network,
+                "is_directed": is_directed,
+                "n_finite": observed["n_finite"],
+                "mean": observed["mean"],
+                "median": observed["median"],
+                "std": observed["std"],
+                "q25": observed["q25"],
+                "q75": observed["q75"],
+                "mean_upper": observed_upper["mean"],
+                "median_upper": observed_upper["median"],
+                "std_upper": observed_upper["std"],
+                "mean_lower": observed_lower["mean"],
+                "median_lower": observed_lower["median"],
+                "std_lower": observed_lower["std"],
+                "between_reference_mean_across_subjects": reference["mean"],
+                "between_reference_std_across_subjects": reference["std"],
+                "between_reference_q25_across_subjects": reference["q25"],
+                "between_reference_q75_across_subjects": reference["q75"],
+                "between_reference_mean_upper_across_subjects": reference_upper_summary["mean"],
+                "between_reference_mean_lower_across_subjects": reference_lower_summary["mean"],
+                "within_minus_between_mean": delta["mean"],
+                "within_minus_between_median": delta["median"],
+                "within_minus_between_std": delta["std"],
+                "within_minus_between_q25": delta["q25"],
+                "within_minus_between_q75": delta["q75"],
+                "within_minus_between_mean_upper": delta_upper_summary["mean"],
+                "within_minus_between_mean_lower": delta_lower_summary["mean"],
+                "reference_type": "between_network_crosshemisphere",
+                "valid_fraction": valid_fraction,
+            }
+        )
+
+    return summary_records
 
 
 def evaluate_combo(
@@ -165,10 +287,11 @@ def evaluate_combo(
     reducer: str,
     use_abs: bool,
     min_valid_sub_fraction: float,
-    perm_test: bool,
-    n_perm: int,
-    random_state: np.random.RandomState,
-) -> tuple[dict, list[dict], dict | None]:
+    within_edge_map: dict[str, np.ndarray],
+    between_edge_map: dict[str, np.ndarray],
+    overall_between_edges: np.ndarray,
+    network_order: tuple[str, ...],
+) -> tuple[dict, list[dict], list[dict]]:
     """Evaluate one method/function(/lag) combination."""
     method = combo["method"]
     func = combo["func"]
@@ -188,7 +311,7 @@ def evaluate_combo(
 
     counts = avg_mats_df["Count"].to_numpy()
     valid_mask = counts > 0
-    valid_fraction = float(np.mean(valid_mask))
+    valid_fraction = float(np.mean(valid_mask)) if len(valid_mask) else 0.0
 
     combo_key = make_combo_key(method, func, lag)
     combo_status = "ok" if valid_fraction >= min_valid_sub_fraction else "insufficient_data"
@@ -204,148 +327,137 @@ def evaluate_combo(
     }
 
     if combo_status != "ok":
-        return combo_record, [], None
+        return combo_record, [], []
 
     is_directed = infer_combo_is_directed(method=method, func=func, symmetry_lookup=symmetry_lookup)
-    combo_perm_seed = int(random_state.randint(1000, 1000000))
+    total_within_edge_count = int(sum(len(within_edge_map[network]) for network in network_order))
 
-    values = []
-    values_upper = []
-    values_lower = []
-    null_values = []
-    null_values_upper = []
-    null_values_lower = []
     score_records = []
-
     for sub, row in avg_mats_df.iterrows():
         count = int(row["Count"])
         mat = row["Matrix"]
+
+        network_summaries = []
         if count <= 0 or mat is None:
-            summary = build_empty_homotopic_summary()
-            null_summary = build_empty_null_summary()
-        else:
-            summary = summarize_homotopic_fc_ranked(
-                mat,
+            for network in network_order:
+                score_records.append(
+                    build_score_record(
+                        sub=sub,
+                        method=method,
+                        func=func,
+                        lag=lag,
+                        combo_key=combo_key,
+                        analysis_level=ANALYSIS_LEVEL_NETWORK,
+                        network=network,
+                        n_crosshemi_edges=len(within_edge_map[network]),
+                        n_between_network_edges=len(between_edge_map[network]),
+                        n_networks_aggregated=1,
+                        run_count=count,
+                        summary=build_empty_homotopic_summary(is_directed),
+                        reference_summary=build_empty_reference_summary(is_directed),
+                        is_directed=is_directed,
+                    )
+                )
+            score_records.append(
+                build_score_record(
+                    sub=sub,
+                    method=method,
+                    func=func,
+                    lag=lag,
+                    combo_key=combo_key,
+                    analysis_level=ANALYSIS_LEVEL_OVERALL,
+                    network=OVERALL_NETWORK_LABEL,
+                    n_crosshemi_edges=total_within_edge_count,
+                    n_between_network_edges=len(overall_between_edges),
+                    n_networks_aggregated=len(network_order),
+                    run_count=count,
+                    summary=build_empty_homotopic_summary(is_directed),
+                    reference_summary=build_empty_reference_summary(is_directed),
+                    is_directed=is_directed,
+                )
+            )
+            continue
+
+        ranked = rank_matrix_offdiagonal(
+            mat,
+            parc_size=parc_size,
+            use_abs_rank=use_abs,
+        )
+        for network in network_order:
+            within_edges = within_edge_map[network]
+            between_edges = between_edge_map[network]
+            summary = summarize_homotopic_fc_ranked_edges(
+                ranked,
                 parc_size=parc_size,
+                edge_indices=within_edges,
                 reducer=reducer,
-                use_abs_rank=use_abs,
                 is_directed=is_directed,
             )
-            if perm_test:
-                null_summary = summarize_heterotopic_null_fc_ranked(
-                    mat,
-                    parc_size=parc_size,
-                    reducer=reducer,
-                    use_abs_rank=use_abs,
+            reference_summary = summarize_between_network_reference_ranked_edges(
+                ranked,
+                parc_size=parc_size,
+                edge_indices=between_edges,
+                reducer=reducer,
+                is_directed=is_directed,
+            )
+
+            network_summaries.append(summary)
+            score_records.append(
+                build_score_record(
+                    sub=sub,
+                    method=method,
+                    func=func,
+                    lag=lag,
+                    combo_key=combo_key,
+                    analysis_level=ANALYSIS_LEVEL_NETWORK,
+                    network=network,
+                    n_crosshemi_edges=len(within_edges),
+                    n_between_network_edges=len(between_edges),
+                    n_networks_aggregated=1,
+                    run_count=count,
+                    summary=summary,
+                    reference_summary=reference_summary,
                     is_directed=is_directed,
-                    n_perm=n_perm,
-                    seed=combo_perm_seed,
                 )
-            else:
-                null_summary = build_empty_null_summary()
+            )
 
-        score = float(summary["homotopic_score"])
-        score_upper = float(summary["homotopic_score_upper"])
-        score_lower = float(summary["homotopic_score_lower"])
-        null_mean = float(null_summary["heterotopic_null_mean"])
-        null_std = float(null_summary["heterotopic_null_std"])
-        null_q25 = float(null_summary["heterotopic_null_q25"])
-        null_q75 = float(null_summary["heterotopic_null_q75"])
-        null_mean_upper = float(null_summary["heterotopic_null_mean_upper"])
-        null_mean_lower = float(null_summary["heterotopic_null_mean_lower"])
-
-        homotopic_minus_null = (
-            float(score - null_mean)
-            if np.isfinite(score) and np.isfinite(null_mean)
-            else np.nan
+        overall_summary = average_network_summaries(network_summaries, is_directed=is_directed)
+        overall_reference_summary = summarize_between_network_reference_ranked_edges(
+            ranked,
+            parc_size=parc_size,
+            edge_indices=overall_between_edges,
+            reducer=reducer,
+            is_directed=is_directed,
         )
-        homotopic_vs_null_z = (
-            float((score - null_mean) / null_std)
-            if np.isfinite(score) and np.isfinite(null_mean) and np.isfinite(null_std) and null_std > 0
-            else np.nan
-        )
-
-        values.append(score)
-        values_upper.append(score_upper)
-        values_lower.append(score_lower)
-        null_values.append(null_mean)
-        null_values_upper.append(null_mean_upper)
-        null_values_lower.append(null_mean_lower)
         score_records.append(
-            {
-                "sub": sub,
-                "method": method,
-                "func": func,
-                "lag": lag,
-                "combo_key": combo_key,
-                "run_count": count,
-                "homotopic_score": score,
-                "homotopic_score_upper": score_upper,
-                "homotopic_score_lower": score_lower,
-                "heterotopic_null_mean": null_mean,
-                "heterotopic_null_std": null_std,
-                "heterotopic_null_q25": null_q25,
-                "heterotopic_null_q75": null_q75,
-                "heterotopic_null_mean_upper": null_mean_upper,
-                "heterotopic_null_mean_lower": null_mean_lower,
-                "heterotopic_null_q25_upper": float(null_summary["heterotopic_null_q25_upper"]),
-                "heterotopic_null_q75_upper": float(null_summary["heterotopic_null_q75_upper"]),
-                "heterotopic_null_q25_lower": float(null_summary["heterotopic_null_q25_lower"]),
-                "heterotopic_null_q75_lower": float(null_summary["heterotopic_null_q75_lower"]),
-                "homotopic_minus_null": homotopic_minus_null,
-                "homotopic_vs_null_z": homotopic_vs_null_z,
-                "perm_test": perm_test,
-                "perm_seed": combo_perm_seed,
-                "n_perm": n_perm,
-                "is_directed": is_directed,
-            }
+            build_score_record(
+                sub=sub,
+                method=method,
+                func=func,
+                lag=lag,
+                combo_key=combo_key,
+                analysis_level=ANALYSIS_LEVEL_OVERALL,
+                network=OVERALL_NETWORK_LABEL,
+                n_crosshemi_edges=total_within_edge_count,
+                n_between_network_edges=len(overall_between_edges),
+                n_networks_aggregated=len(network_order),
+                run_count=count,
+                summary=overall_summary,
+                reference_summary=overall_reference_summary,
+                is_directed=is_directed,
+            )
         )
 
-    values = np.asarray(values, dtype=np.float64)
-    values_upper = np.asarray(values_upper, dtype=np.float64)
-    values_lower = np.asarray(values_lower, dtype=np.float64)
-    null_values = np.asarray(null_values, dtype=np.float64)
-    null_values_upper = np.asarray(null_values_upper, dtype=np.float64)
-    null_values_lower = np.asarray(null_values_lower, dtype=np.float64)
-    finite_mask = np.isfinite(values)
-    finite_upper = np.isfinite(values_upper)
-    finite_lower = np.isfinite(values_lower)
-    finite_null = np.isfinite(null_values)
-    finite_null_upper = np.isfinite(null_values_upper)
-    finite_null_lower = np.isfinite(null_values_lower)
-
-    method_summary_record = {
-        "method": method,
-        "func": func,
-        "lag": lag,
-        "combo_key": combo_key,
-        "is_directed": is_directed,
-        "n_finite": int(finite_mask.sum()),
-        "mean": float(np.nanmean(values)) if np.any(finite_mask) else np.nan,
-        "median": float(np.nanmedian(values)) if np.any(finite_mask) else np.nan,
-        "std": float(np.nanstd(values, ddof=1)) if finite_mask.sum() > 1 else np.nan,
-        "mean_upper": float(np.nanmean(values_upper)) if np.any(finite_upper) else np.nan,
-        "median_upper": float(np.nanmedian(values_upper)) if np.any(finite_upper) else np.nan,
-        "std_upper": float(np.nanstd(values_upper, ddof=1)) if finite_upper.sum() > 1 else np.nan,
-        "mean_lower": float(np.nanmean(values_lower)) if np.any(finite_lower) else np.nan,
-        "median_lower": float(np.nanmedian(values_lower)) if np.any(finite_lower) else np.nan,
-        "std_lower": float(np.nanstd(values_lower, ddof=1)) if finite_lower.sum() > 1 else np.nan,
-        "null_mean_across_subjects": float(np.nanmean(null_values)) if np.any(finite_null) else np.nan,
-        "null_std_across_subjects": float(np.nanstd(null_values, ddof=1)) if finite_null.sum() > 1 else np.nan,
-        "null_q25_across_subjects": float(np.nanpercentile(null_values, 25)) if np.any(finite_null) else np.nan,
-        "null_q75_across_subjects": float(np.nanpercentile(null_values, 75)) if np.any(finite_null) else np.nan,
-        "null_mean_upper_across_subjects": (
-            float(np.nanmean(null_values_upper)) if np.any(finite_null_upper) else np.nan
-        ),
-        "null_mean_lower_across_subjects": (
-            float(np.nanmean(null_values_lower)) if np.any(finite_null_lower) else np.nan
-        ),
-        "perm_test": perm_test,
-        "perm_seed": combo_perm_seed,
-        "n_perm": n_perm,
-        "valid_fraction": valid_fraction,
-    }
-    return combo_record, score_records, method_summary_record
+    method_summary_records = summarize_combo_scores(
+        score_records,
+        method=method,
+        func=func,
+        lag=lag,
+        combo_key=combo_key,
+        is_directed=is_directed,
+        valid_fraction=valid_fraction,
+    )
+    return combo_record, score_records, method_summary_records
 
 
 def run_homotopic_benchmark(
@@ -360,15 +472,9 @@ def run_homotopic_benchmark(
     min_valid_sub_fraction: float = MIN_VALID_SUB_FRACTION,
     n_subjects: int | None = None,
     max_combos: int | None = None,
-    perm_test: bool = False,
-    seed: int = 2142,
-    n_perm: int = 200,
     out_dir: str | None = None,
 ) -> Path:
     import arfcexp.hcp
-
-    if not validate_schaefer_homotopic_pairs(parc_size=parc_size):
-        raise RuntimeError("Homotopic pair validation failed.")
 
     project_root = Path(os.environ["PROJECT_ROOT"])
     data_path_p = Path(data_path)
@@ -378,10 +484,11 @@ def run_homotopic_benchmark(
     method_func_path = project_root / "resources/sparse_prediction_method_func_list.txt"
     degenerate_lookup_path = project_root / "resources/matrix_degenerate_lookup.json"
 
-    if out_dir is None:
-        out_dir_root = project_root / "results/hcp_1200_homotopic_fc"
-    else:
-        out_dir_root = Path(out_dir)
+    out_dir_root = (
+        project_root / "results/hcp_1200_homotopic_fc"
+        if out_dir is None
+        else Path(out_dir)
+    )
 
     sub_list = arfcexp.hcp.load_hcp_subject_list()
     if n_subjects is not None:
@@ -396,7 +503,6 @@ def run_homotopic_benchmark(
         lag=lag,
         max_combos=max_combos,
     )
-
     if len(combos) == 0:
         raise ValueError(
             "No method/function combinations selected. "
@@ -411,22 +517,34 @@ def run_homotopic_benchmark(
         include_skarf_lag1=include_skarf_lag1,
         n_subjects=n_subjects,
         max_combos=max_combos,
-        perm_test=perm_test,
-        seed=seed,
-        n_perm=n_perm,
         method=method,
         func=func,
         lag=lag,
     )
-
-    if out_dir_p.exists():
-        logging.info("Output already exists; exiting.")
+    complete_marker = out_dir_p / "subject_homotopic_scores.parquet"
+    if complete_marker.exists():
+        logging.info("Output already exists; exiting: %s", out_dir_p)
         return out_dir_p
     out_dir_p.mkdir(exist_ok=True, parents=True)
+
+    network_order = get_schaefer_network_order(parc_size=parc_size)
+    within_edge_map = get_schaefer_within_network_edges(parc_size=parc_size)
+    between_edge_map = get_schaefer_between_network_edges(parc_size=parc_size)
+    overall_between_edges = get_schaefer_overall_between_network_edges(parc_size=parc_size)
 
     params = {
         "data_path": str(data_path_p),
         "parc_size": parc_size,
+        "analysis_tag": ANALYSIS_TAG,
+        "analysis_level": "per-network + equal-weight overall network mean",
+        "network_order": list(network_order),
+        "within_network_edge_counts": {
+            network: int(len(within_edge_map[network])) for network in network_order
+        },
+        "between_network_edge_counts": {
+            network: int(len(between_edge_map[network])) for network in network_order
+        },
+        "overall_between_network_edge_count": int(len(overall_between_edges)),
         "reducer": reducer,
         "use_abs": use_abs,
         "include_skarf_lag1": include_skarf_lag1,
@@ -436,31 +554,25 @@ def run_homotopic_benchmark(
         "min_valid_sub_fraction": min_valid_sub_fraction,
         "n_subjects": n_subjects,
         "max_combos": max_combos,
-        "perm_test": perm_test,
-        "seed": seed,
-        "n_perm": n_perm,
-        "perm_strategy": "heterotopic_interhemi",
+        "observed_strategy": "within_network_lh_x_rh_crosshemisphere_blocks; overall=equal_weight_network_mean",
+        "reference_strategy": "between_network_crosshemisphere_complement; per_network=network_local; overall=all_crosshemi_minus_all_within_blocks",
+        "reference_type": "deterministic_empirical_between_network_reference",
     }
     with (out_dir_p / "params.yaml").open("w") as f:
         yaml.safe_dump(params, f, sort_keys=False)
 
     logging.info(
-        "Running homotopic FC benchmark with %d combinations (%d excluded).",
+        "Running network-block homotopic FC benchmark with %d combinations (%d excluded).",
         len(combos),
         len(excluded),
     )
     logging.info(
-        "Using rank-based homotopic scoring (global off-diagonal percentile ranks, rank abs=%s).",
+        "Using Schaefer-7 within-network LH x RH blocks (overall = equal-weight mean across %d networks, rank abs=%s).",
+        len(network_order),
         use_abs,
     )
-    if perm_test:
-        logging.info(
-            "Heterotopic null enabled (n_perm=%d, seed=%d, strategy=heterotopic_interhemi).",
-            n_perm,
-            seed,
-        )
+    logging.info("Using deterministic between-network cross-hemisphere empirical references.")
 
-    random_state = check_random_state(seed)
     symmetry_lookup = load_symmetry_lookup(project_root)
     reader = EfficientMatrixReader(data_path_p)
 
@@ -478,7 +590,7 @@ def run_homotopic_benchmark(
     method_summary_records = []
 
     for combo in combos:
-        combo_record, combo_score_records, method_summary_record = evaluate_combo(
+        combo_record, combo_score_records, combo_method_summaries = evaluate_combo(
             combo,
             data_path=data_path_p,
             sub_list=sub_list,
@@ -488,14 +600,14 @@ def run_homotopic_benchmark(
             reducer=reducer,
             use_abs=use_abs,
             min_valid_sub_fraction=min_valid_sub_fraction,
-            perm_test=perm_test,
-            n_perm=n_perm,
-            random_state=random_state,
+            within_edge_map=within_edge_map,
+            between_edge_map=between_edge_map,
+            overall_between_edges=overall_between_edges,
+            network_order=network_order,
         )
         combo_records.append(combo_record)
         score_records.extend(combo_score_records)
-        if method_summary_record is not None:
-            method_summary_records.append(method_summary_record)
+        method_summary_records.extend(combo_method_summaries)
 
     combo_df = pd.DataFrame(combo_records)
     scores_df = pd.DataFrame(score_records)
@@ -505,9 +617,15 @@ def run_homotopic_benchmark(
     if len(combo_df) > 0:
         combo_df.sort_values(["method", "func", "lag"], inplace=True)
     if len(scores_df) > 0:
-        scores_df.sort_values(["method", "func", "lag", "sub"], inplace=True)
+        scores_df.sort_values(
+            ["method", "func", "lag", "analysis_level", "network", "sub"],
+            inplace=True,
+        )
     if len(method_summary_df) > 0:
-        method_summary_df.sort_values(["method", "func", "lag"], inplace=True)
+        method_summary_df.sort_values(
+            ["method", "func", "lag", "analysis_level", "network"],
+            inplace=True,
+        )
 
     combo_df.to_csv(out_dir_p / "combination_status.csv", index=False)
     excluded_df.to_csv(out_dir_p / "excluded_combinations.csv", index=False)
@@ -538,9 +656,6 @@ def main(
     min_valid_sub_fraction: float = MIN_VALID_SUB_FRACTION,
     n_subjects: int | None = None,
     max_combos: int | None = None,
-    perm_test: bool = False,
-    seed: int = 2142,
-    n_perm: int = 200,
     out_dir: str | None = None,
 ):
     run_homotopic_benchmark(
@@ -555,67 +670,8 @@ def main(
         min_valid_sub_fraction=min_valid_sub_fraction,
         n_subjects=n_subjects,
         max_combos=max_combos,
-        perm_test=perm_test,
-        seed=seed,
-        n_perm=n_perm,
         out_dir=out_dir,
     )
-
-
-def make_combo_key(method: str, func: str, lag: int) -> str:
-    if method == "skarf":
-        return f"{method}__{func}__lag-{lag}"
-    return f"{method}__{func}"
-
-
-def build_combinations(
-    base_pairs: list[tuple[str, str]],
-    degenerate_lookup: dict[str, bool],
-    *,
-    include_skarf_lag1: bool,
-) -> tuple[list[dict], list[dict]]:
-    combos = []
-    excluded = []
-
-    for method, func in base_pairs:
-        key = f"{method}__{func}"
-        if method == "pyspi" and degenerate_lookup.get(key, False):
-            excluded.append(
-                {
-                    "method": method,
-                    "func": func,
-                    "reason": "degenerate_matrix",
-                }
-            )
-            continue
-
-        combos.append({"method": method, "func": func, "lag": 0})
-        if method == "skarf" and include_skarf_lag1:
-            combos.append({"method": method, "func": func, "lag": 1})
-
-    return combos, excluded
-
-
-def select_combinations(
-    combos: list[dict],
-    *,
-    method: str | None,
-    func: str | None,
-    lag: int,
-) -> list[dict]:
-    """Select a specific method/function/lag subset when requested."""
-    if (method is None) != (func is None):
-        raise ValueError("method and func must be provided together.")
-
-    if method is None:
-        return combos
-
-    selected_lag = lag if method == "skarf" else 0
-    return [
-        combo
-        for combo in combos
-        if combo["method"] == method and combo["func"] == func and combo["lag"] == selected_lag
-    ]
 
 
 def compute_family_subject_scores(scores_df: pd.DataFrame) -> pd.DataFrame:
@@ -633,9 +689,10 @@ def compute_family_subject_scores(scores_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     valid_df = scores_df.dropna(subset=["homotopic_score"]).copy()
-    agg_cols = {
-        "homotopic_score": "family_mean_score",
-    }
+    if "analysis_level" in valid_df.columns:
+        valid_df = valid_df.loc[valid_df["analysis_level"] == ANALYSIS_LEVEL_OVERALL].copy()
+
+    agg_cols = {"homotopic_score": "family_mean_score"}
     if "homotopic_score_upper" in valid_df.columns:
         agg_cols["homotopic_score_upper"] = "family_mean_score_upper"
     if "homotopic_score_lower" in valid_df.columns:
@@ -673,6 +730,11 @@ def compute_stats(scores_df: pd.DataFrame, method_summary_df: pd.DataFrame) -> d
                 }
 
     if len(method_summary_df) > 0:
+        if "analysis_level" in method_summary_df.columns:
+            method_summary_df = method_summary_df.loc[
+                method_summary_df["analysis_level"] == ANALYSIS_LEVEL_OVERALL
+            ].copy()
+
         py = method_summary_df.loc[method_summary_df["method"] == "pyspi", "mean"].to_numpy(
             dtype=np.float64
         )
@@ -694,7 +756,6 @@ def compute_stats(scores_df: pd.DataFrame, method_summary_df: pd.DataFrame) -> d
                 "cliffs_delta": float(cliffs_delta(py, sk)),
             }
 
-        # Compare skarf lag-0 vs lag-1 per function (paired over function names).
         skarf = method_summary_df.query("method == 'skarf'").copy()
         if len(skarf) > 0:
             pivot = skarf.pivot(index="func", columns="lag", values="mean")

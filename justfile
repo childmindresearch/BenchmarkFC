@@ -182,8 +182,9 @@ analyze_hcp_1200_sparse_behav_prediction:
     uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_sparse_behav_prediction.ipynb
 
 # FC - homotopic FC benchmark across PySPI and skarf.
-# Computes rank-based homotopic FC summaries for all valid pyspi combos plus
-# skarf lag-0/lag-1 variants with configurable joblib parallel execution.
+# Computes rank-based Schaefer-7 network-block within-network homotopy scores and
+# deterministic between-network cross-hemisphere empirical references for all valid
+# pyspi combos plus skarf lag-0/lag-1 variants.
 eval_hcp_1200_homotopic_fc:
     mkdir -p logs/eval_hcp_1200_homotopic_fc 2>/dev/null
     uv run --env-file .env python scripts/eval_hcp_1200_homotopic_fc_parallel.py 2>&1 | tee logs/eval_hcp_1200_homotopic_fc/run_$(date +%Y%m%d_%H%M%S).log
@@ -202,3 +203,76 @@ eval_hcp_1200_demographics_prediction:
 # Analysis and figures for demographics (gender + age) prediction results.
 analyze_hcp_1200_demographics_prediction:
     uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_demographics_prediction.ipynb
+
+# FC - weight-distance benchmark across PySPI and skarf.
+# Computes signed Spearman correlations between Schaefer-200 centroid distances and
+# FC weights, with Alexander-Bloch spin-null summaries and directed upper/lower
+# triangle handling.
+eval_hcp_1200_weight_distance:
+    mkdir -p logs/eval_hcp_1200_weight_distance 2>/dev/null
+    uv run --env-file .env python scripts/eval_hcp_1200_weight_distance_parallel.py 2>&1 | tee logs/eval_hcp_1200_weight_distance/run_$(date +%Y%m%d_%H%M%S).log
+
+# Analysis and figures for the weight-distance benchmark results.
+analyze_hcp_1200_weight_distance:
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_weight_distance.ipynb
+
+# Ensemble (krakencoder) pipeline
+# ---------------------------------------------------------------------------
+# Fuses the top-5/10/15 ranked FC methods (from the combined leaderboard) into
+# new connectivity matrices via krakencoder, fused per run (one ensemble
+# matrix per subject per session/run, matching the main aggregated parquet's
+# [sub, ses, run] structure) so reliability metrics can be computed for
+# ensemble combos, then re-runs the same benchmark suite on the fused
+# matrices.
+
+# Phase 1 - select top-N ranked methods and export their per-subject averaged
+# input matrices for krakencoder bridge training (krakencoder's precomputed
+# fusion-latent target is inherently subject-level, so bridge training still
+# uses subject-averaged inputs - only the final ensemble reconstruction in
+# Phase 3 fuses per run).
+select_ensemble_methods:
+    uv run --env-file .env python scripts/select_ensemble_methods.py
+
+export_ensemble_input_matrices:
+    uv run --env-file .env python scripts/export_ensemble_input_matrices.py
+
+# Phase 2 - fetch krakencoder's precomputed fusion latents/subject split, build
+# per-flavor bridging inputs, and train each flavor's encoder/decoder into the
+# pretrained fusion latent space.
+fetch_krakencoder_fusion_target:
+    uv run --env-file .env python scripts/fetch_krakencoder_fusion_target.py
+
+build_krakencoder_bridge_inputs:
+    uv run --env-file .env python scripts/build_krakencoder_bridge_inputs.py
+
+train_ensemble_krakencoder_bridge:
+    uv run --env-file .env python scripts/train_ensemble_krakencoder_bridge.py
+
+# Phase 3 - apply reconstruction rules (simple/weighted average, reference
+# decoder) per run and write the ensemble parquet in the same schema as the main
+# aggregated parquet.
+build_ensemble_matrices:
+    uv run --env-file .env python scripts/build_ensemble_matrices.py
+
+# Phase 4 - re-run the benchmark suite (behavioral prediction, demographics,
+# info density, reliability) on the ensemble combos.
+eval_hcp_1200_ensemble_behav_prediction:
+    mkdir -p logs/eval_hcp_1200_ensemble_behav_prediction 2>/dev/null
+    uv run --env-file .env python scripts/eval_hcp_1200_ensemble_behav_prediction.py 2>&1 | tee logs/eval_hcp_1200_ensemble_behav_prediction/run_$(date +%Y%m%d_%H%M%S).log
+
+eval_hcp_1200_ensemble_demographics_prediction:
+    mkdir -p logs/eval_hcp_1200_ensemble_demographics_prediction 2>/dev/null
+    uv run --env-file .env python scripts/eval_hcp_1200_ensemble_demographics_prediction.py 2>&1 | tee logs/eval_hcp_1200_ensemble_demographics_prediction/run_$(date +%Y%m%d_%H%M%S).log
+
+compute_ensemble_info_density:
+    mkdir -p logs/compute_ensemble_info_density 2>/dev/null
+    uv run --env-file .env python scripts/compute_ensemble_info_density.py 2>&1 | tee logs/compute_ensemble_info_density/run_$(date +%Y%m%d_%H%M%S).log
+
+compute_ensemble_reliability:
+    mkdir -p logs/compute_ensemble_reliability 2>/dev/null
+    uv run --env-file .env python scripts/compute_ensemble_reliability.py 2>&1 | tee logs/compute_ensemble_reliability/run_$(date +%Y%m%d_%H%M%S).log
+
+# Phase 5 - re-run the combined ranking notebook to merge ensemble rows into
+# the leaderboard (writes combined_benchmark_scores_ranked.csv).
+analyze_hcp_1200_benchmark_scores_combined:
+    uv run --env-file .env jupyter execute --inplace notebooks/analyze_hcp_1200_benchmark_scores_combined.ipynb

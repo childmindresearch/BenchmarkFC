@@ -1,0 +1,16 @@
+rank,method,func,lag,combo_key,is_directed,family,display_name,maxnorm_rank_sum,maxnorm_rank_order
+1,skarf,linear_pca-ridge,0,skarf__linear_pca-ridge__lag-0,True,skarf,skarf lin:pca-ridge lag 0,3.3679050015817733,1
+2,skarf,linear_ridge,0,skarf__linear_ridge__lag-0,True,skarf,skarf lin:ridge lag 0,3.244579685897927,2
+3,skarf,linear_enet,0,skarf__linear_enet__lag-0,True,skarf,skarf lin:enet lag 0,3.2248413423617506,3
+4,skarf,linear_ridge,1,skarf__linear_ridge__lag-1,True,skarf,skarf lin:ridge lag 1,3.200626473782895,4
+5,skarf,prec_graphicallasso,0,skarf__prec_graphicallasso__lag-0,True,skarf,skarf prec:graphicallasso lag 0,3.197498094098846,5
+6,skarf,linear_pls,0,skarf__linear_pls__lag-0,True,skarf,skarf lin:pls lag 0,3.1887531674057894,6
+7,skarf,linear_lasso,0,skarf__linear_lasso__lag-0,True,skarf,skarf lin:lasso lag 0,3.1773044457122035,7
+8,pyspi,cov_EmpiricalCovariance,0,pyspi__cov_EmpiricalCovariance,False,pyspi,PySPI cov_EmpiricalCovariance,3.141807152795775,8
+9,pyspi,cov_ShrunkCovariance,0,pyspi__cov_ShrunkCovariance,False,pyspi,PySPI cov_ShrunkCovariance,3.141806348026763,9
+10,pyspi,cov_LedoitWolf,0,pyspi__cov_LedoitWolf,False,pyspi,PySPI cov_LedoitWolf,3.1417101977265185,10
+11,pyspi,cov_OAS,0,pyspi__cov_OAS,False,pyspi,PySPI cov_OAS,3.141655774500429,11
+12,skarf,linear_enet,1,skarf__linear_enet__lag-1,True,skarf,skarf lin:enet lag 1,3.1385295831810094,12
+13,pyspi,kendalltau,0,pyspi__kendalltau,False,pyspi,PySPI kendalltau,3.1363311724672127,13
+14,pyspi,spearmanr,0,pyspi__spearmanr,False,pyspi,PySPI spearmanr,3.1273531598573463,14
+15,pyspi,cov_MinCovDet,0,pyspi__cov_MinCovDet,False,pyspi,PySPI cov_MinCovDet,3.114983495507245,15

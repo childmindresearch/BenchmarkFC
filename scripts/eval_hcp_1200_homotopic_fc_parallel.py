@@ -1,10 +1,5 @@
 #!/usr/bin/env python
-"""Run homotopic FC evaluation in parallel using joblib.
-
-This wrapper delegates the actual evaluation to
-scripts/eval_hcp_1200_homotopic_fc.py and only handles outer parallel
-orchestration across combinations.
-"""
+"""Run network-block homotopic FC evaluation in parallel across combinations."""
 
 import importlib.util
 import json
@@ -42,9 +37,6 @@ def run_eval(
     include_skarf_lag1: bool,
     min_valid_sub_fraction: float,
     n_subjects: int | None,
-    perm_test: bool,
-    seed: int,
-    n_perm: int,
     out_dir: str,
     n_jobs_per_task: int = 4,
 ) -> dict:
@@ -56,7 +48,6 @@ def run_eval(
     env["BLIS_NUM_THREADS"] = str(n_jobs_per_task)
 
     script_path = Path(__file__).with_name("eval_hcp_1200_homotopic_fc.py")
-
     cmd = [
         sys.executable,
         str(script_path),
@@ -74,10 +65,6 @@ def run_eval(
         reducer,
         "--min-valid-sub-fraction",
         str(min_valid_sub_fraction),
-        "--seed",
-        str(seed),
-        "--n-perm",
-        str(n_perm),
         "--out-dir",
         out_dir,
     ]
@@ -95,28 +82,22 @@ def run_eval(
     if n_subjects is not None:
         cmd.extend(["--n-subjects", str(n_subjects)])
 
-    if perm_test:
-        cmd.append("--perm-test")
-    else:
-        cmd.append("--no-perm-test")
-
-    print(f"[START] {method} {func} lag={lag} seed={seed}")
+    print(f"[START] {method} {func} lag={lag}")
     result = subprocess.run(cmd, capture_output=True, text=True, env=env)
 
     if result.returncode == 0:
-        print(f"[SUCCESS] {method} {func} lag={lag} seed={seed}")
+        print(f"[SUCCESS] {method} {func} lag={lag}")
     else:
-        print(
-            f"[FAILED] {method} {func} lag={lag} seed={seed} "
-            f"(exit code: {result.returncode})"
-        )
-        print(f"stderr: {result.stderr[:500]}")
+        print(f"[FAILED] {method} {func} lag={lag} (exit code: {result.returncode})")
+        if result.stderr:
+            print(f"stderr: {result.stderr[-1500:]}")
+        if result.stdout:
+            print(f"stdout: {result.stdout[-1500:]}")
 
     return {
         "method": method,
         "func": func,
         "lag": lag,
-        "seed": seed,
         "returncode": result.returncode,
     }
 
@@ -130,9 +111,6 @@ def main(
     min_valid_sub_fraction: float = 0.9,
     n_subjects: int | None = None,
     max_combos: int | None = None,
-    perm_test: bool = False,
-    seed: int = 2142,
-    n_perm: int = 200,
     n_jobs_parallel: int = 5,
     n_jobs_per_task: int = 3,
     method_func_list: str | None = None,
@@ -144,22 +122,22 @@ def main(
         print("ERROR: PROJECT_ROOT not set. Please source .env file.")
         sys.exit(1)
 
-    project_root = Path(project_root)
-
-    if method_func_list is None:
-        method_func_list_path = project_root / "resources/sparse_prediction_method_func_list.txt"
-    else:
-        method_func_list_path = Path(method_func_list)
-
-    if degenerate_lookup_path is None:
-        degenerate_lookup = project_root / "resources/matrix_degenerate_lookup.json"
-    else:
-        degenerate_lookup = Path(degenerate_lookup_path)
-
-    if out_dir is None:
-        out_dir_path = project_root / "results/hcp_1200_homotopic_fc_parallel"
-    else:
-        out_dir_path = Path(out_dir)
+    project_root_path = Path(project_root)
+    method_func_list_path = (
+        project_root_path / "resources/sparse_prediction_method_func_list.txt"
+        if method_func_list is None
+        else Path(method_func_list)
+    )
+    degenerate_lookup = (
+        project_root_path / "resources/matrix_degenerate_lookup.json"
+        if degenerate_lookup_path is None
+        else Path(degenerate_lookup_path)
+    )
+    out_dir_path = (
+        project_root_path / "results/hcp_1200_homotopic_fc_parallel"
+        if out_dir is None
+        else Path(out_dir)
+    )
     out_dir_path.mkdir(exist_ok=True, parents=True)
 
     combos, excluded = load_combinations(
@@ -174,19 +152,17 @@ def main(
     print("  - All valid methods at lag=0")
     if include_skarf_lag1:
         print("  - skarf methods also at lag=1")
-    print(f"Will use {n_jobs_parallel} parallel jobs ({n_jobs_per_task} cores each)")
+    print(
+        "Strategy: deterministic network-block homotopy "
+        f"({n_jobs_parallel} workers, {n_jobs_per_task} threads each)"
+    )
     print("-" * 80)
-
-    combo_with_seed = [
-        (combo["method"], combo["func"], combo["lag"], seed + idx)
-        for idx, combo in enumerate(combos)
-    ]
 
     results = Parallel(n_jobs=n_jobs_parallel, verbose=10)(
         delayed(run_eval)(
-            method,
-            func,
-            lag,
+            combo["method"],
+            combo["func"],
+            combo["lag"],
             data_path=data_path,
             parc_size=parc_size,
             reducer=reducer,
@@ -194,27 +170,24 @@ def main(
             include_skarf_lag1=include_skarf_lag1,
             min_valid_sub_fraction=min_valid_sub_fraction,
             n_subjects=n_subjects,
-            perm_test=perm_test,
-            seed=combo_seed,
-            n_perm=n_perm,
             out_dir=str(out_dir_path),
             n_jobs_per_task=n_jobs_per_task,
         )
-        for method, func, lag, combo_seed in combo_with_seed
+        for combo in combos
     )
 
     print("-" * 80)
     print("SUMMARY:")
-    successful = sum(1 for r in results if r["returncode"] == 0)
+    successful = sum(1 for result in results if result["returncode"] == 0)
     failed = len(results) - successful
     print(f"Successful: {successful}/{len(results)}")
     print(f"Failed: {failed}/{len(results)}")
 
     if failed > 0:
         print("\nFailed combinations:")
-        for r in results:
-            if r["returncode"] != 0:
-                print(f"  - {r['method']} {r['func']} lag={r['lag']}")
+        for result in results:
+            if result["returncode"] != 0:
+                print(f"  - {result['method']} {result['func']} lag={result['lag']}")
 
     summary = {
         "data_path": data_path,
@@ -225,17 +198,15 @@ def main(
         "min_valid_sub_fraction": min_valid_sub_fraction,
         "n_subjects": n_subjects,
         "max_combos": max_combos,
-        "perm_test": perm_test,
-        "seed": seed,
-        "n_perm": n_perm,
         "n_jobs_parallel": n_jobs_parallel,
         "n_jobs_per_task": n_jobs_per_task,
+        "reference_type": "between_network_crosshemisphere",
+        "analysis_tag": "networkblock-v2",
         "excluded_count": len(excluded),
         "successful": successful,
         "failed": failed,
         "results": results,
     }
-
     with (out_dir_path / "parallel_run_summary.json").open("w") as f:
         json.dump(summary, f, indent=2)
 

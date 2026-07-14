@@ -1,0 +1,9 @@
+ensemble	top5_simple_average
+ensemble	top5_weighted_average
+ensemble	top5_reference_decoder
+ensemble	top10_simple_average
+ensemble	top10_weighted_average
+ensemble	top10_reference_decoder
+ensemble	top15_simple_average
+ensemble	top15_weighted_average
+ensemble	top15_reference_decoder
